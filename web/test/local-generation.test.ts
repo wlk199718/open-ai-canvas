@@ -118,6 +118,40 @@ describe("desktop local generation connection", () => {
         expect([...values.values()].join("\n")).not.toContain(connection.token);
     });
 
+    test("fresh installation configures local media defaults without adding text models", async () => {
+        useConfigStore.getState().replaceConfig({ ...defaultConfig, channels: [] });
+        globalThis.fetch = (async () => Response.json({ data: [
+            { ...models[0], id: "nano2 lite" },
+            { ...models[0], id: "3.2_pro_m", name: "Nano Banana Pro" },
+            { provider: "wan-video", id: "wan", name: "Wan", ratios: ["16:9"], max_references: 1, duration_min: 5, duration_max: 10 },
+            { provider: "q4-video", id: "q4", name: "Q4", ratios: ["16:9"], max_references: 7, duration_min: 5, duration_max: 10 },
+        ] })) as typeof fetch;
+        await restoreLocalGenerationConnection();
+        const config = useConfigStore.getState().config;
+        expect(config.imageModel).toBe("zaowu-local-image::3.2_pro_m");
+        expect(config.videoModel).toBe("zaowu-local-q4-video::q4");
+        expect(config.textModel).toBe("");
+        expect(config.textModels).toEqual([]);
+        expect([...values.values()].join("\n")).not.toContain(connection.token);
+        useConfigStore.getState().updateConfig("imageModel", "zaowu-local-image::nano2 lite");
+        useConfigStore.getState().updateConfig("videoModel", "zaowu-local-wan-video::wan");
+        await restoreLocalGenerationConnection();
+        expect(useConfigStore.getState().config.imageModel).toBe("zaowu-local-image::nano2 lite");
+        expect(useConfigStore.getState().config.videoModel).toBe("zaowu-local-wan-video::wan");
+    });
+
+    test("video defaults use the available provider when Q4 is absent", async () => {
+        useConfigStore.getState().replaceConfig({ ...defaultConfig, channels: [] });
+        globalThis.fetch = (async () => Response.json({ data: [
+            { provider: "wan-video", id: "wan", name: "Wan", ratios: ["16:9"], max_references: 1, duration_min: 5, duration_max: 10 },
+        ] })) as typeof fetch;
+        await restoreLocalGenerationConnection();
+        const config = useConfigStore.getState().config;
+        expect(config.videoModel).toBe("zaowu-local-wan-video::wan");
+        expect(config.imageModel).toBe("");
+        expect(config.textModel).toBe("");
+    });
+
     test("missing desktop connection does not request a browser handshake", async () => {
         window.zaowuDesktop!.getLocalProviderConnection = async () => null;
         await restoreLocalGenerationConnection();

@@ -1,6 +1,8 @@
 import { AudioLines, Check, Film, Image, MessageSquareText } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { ModelIcon } from "@/components/model-picker";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { cn } from "@/lib/utils";
 import {
     filterModelsByCapability,
@@ -13,6 +15,15 @@ import {
 import { useUserStore } from "@/stores/use-user-store";
 
 type DefaultModelKey = "imageModel" | "videoModel" | "textModel" | "audioModel";
+type TextModelCategory = "gpt" | "claude" | "gemini" | "domestic" | "other";
+
+const textModelCategories: Array<{ key: TextModelCategory; label: string }> = [
+    { key: "gpt", label: "GPT" },
+    { key: "gemini", label: "Gemini" },
+    { key: "claude", label: "Claude" },
+    { key: "domestic", label: "国产" },
+    { key: "other", label: "其他" },
+];
 
 const groups: Array<{
     capability: ModelCapability;
@@ -29,6 +40,32 @@ const groups: Array<{
 
 export function ModelDefaultGrid({ config, onChange }: { config: AiConfig; onChange: (key: DefaultModelKey, model: string) => void }) {
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
+    const [requestedTextCategory, setRequestedTextCategory] = useState<TextModelCategory | null>(null);
+    const textModelsByCategory = useMemo(() => {
+        const groups = new Map<TextModelCategory, string[]>(textModelCategories.map(({ key }) => [key, []]));
+        for (const model of filterModelsByCapability(config.models, "text", config.channels)) {
+            const names = [modelOptionName(model), modelDisplayName(config, model)];
+            const channel = resolveModelChannel(config, model);
+            const channelLabel = channel.modelCosts?.find((item) => item.model === modelOptionName(model))?.channelLabel || channel.name;
+            const category: TextModelCategory = names.some((name) => /^(gpt|codex)(?:[-\s]|\d|$)/i.test(name))
+                ? "gpt"
+                : names.some((name) => /^gemini(?:[-\s]|\d|$)/i.test(name))
+                  ? "gemini"
+                  : names.some((name) => /^claude(?:[-\s]|\d|$)/i.test(name))
+                    ? "claude"
+                    : names.some((name) => /^(deepseek|glm|kimi|qwen|hy\d|hunyuan|minimax|mimo|doubao|ernie|baichuan|step)/i.test(name)) || /国产/i.test(channelLabel)
+                      ? "domestic"
+                      : "other";
+            groups.get(category)!.push(model);
+        }
+        return groups;
+    }, [config]);
+    const visibleTextCategories = textModelCategories.filter(({ key }) => textModelsByCategory.get(key)!.length > 0);
+    const activeTextCategory = visibleTextCategories.find(({ key }) => key === requestedTextCategory)?.key
+        || visibleTextCategories.find(({ key }) => textModelsByCategory.get(key)!.includes(config.textModel))?.key
+        || visibleTextCategories[0]?.key
+        || "gpt";
+
     return (
         <div className="space-y-1">
             {groups.map((group) => {
@@ -44,9 +81,30 @@ export function ModelDefaultGrid({ config, onChange }: { config: AiConfig; onCha
                             </div>
                             <span className="ml-auto shrink-0 text-xs tabular-nums text-foreground/38">{models.length} 个可用</span>
                         </div>
+                        {group.capability === "text" && models.length > 0 ? (
+                            <div className="mb-3 flex flex-wrap items-center gap-3">
+                                <div className="max-w-full overflow-x-auto">
+                                    <SegmentedControl
+                                        size="sm"
+                                        ariaLabel="文本模型分类"
+                                        value={activeTextCategory}
+                                        onChange={setRequestedTextCategory}
+                                        options={visibleTextCategories.map(({ key, label }) => ({
+                                            value: key,
+                                            label: <>{label}<span className="tabular-nums text-foreground/45">{textModelsByCategory.get(key)!.length}</span></>,
+                                        }))}
+                                    />
+                                </div>
+                                {models.includes(config.textModel) ? (
+                                    <p className="min-w-0 text-xs text-foreground/48">
+                                        当前默认：<span className="font-medium text-foreground/75">{modelDisplayName(config, config.textModel)}</span>
+                                    </p>
+                                ) : null}
+                            </div>
+                        ) : null}
                         {models.length ? (
                             <div role="radiogroup" aria-label={group.title} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                                {models.map((model) => {
+                                {(group.capability === "text" ? textModelsByCategory.get(activeTextCategory)! : models).map((model) => {
                                     const channel = resolveModelChannel(config, model);
                                     const selected = config[group.modelKey] === model;
                                     const cost = channel.modelCosts?.find((item) => item.model === modelOptionName(model));

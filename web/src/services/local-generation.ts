@@ -127,11 +127,12 @@ export async function applyLocalGenerationConnection(connection: LocalGeneration
     const channels = buildLocalGenerationChannels(connection, models);
     const current = useConfigStore.getState().config;
     const firstImage = channels.find((channel) => channel.interfaceType === "zaowu-local-image");
-    const firstVideo = channels.find((channel) => channel.interfaceType === "zaowu-local-q4");
+    const firstVideo = channels.find((channel) => channel.interfaceType === "zaowu-local-q4")
+        || channels.find((channel) => channel.modelCosts?.some((model) => model.capability === "video"));
     useConfigStore.getState().replaceConfig(normalizeConfigSnapshot({ config: {
         ...current,
         channels: [...current.channels.filter((channel) => !channel.id.startsWith("zaowu-local-")), ...channels],
-        imageModel: current.imageModel || (firstImage ? encodeChannelModel(firstImage.id, firstImage.models[0]) : ""),
+        imageModel: current.imageModel || (firstImage ? encodeChannelModel(firstImage.id, firstImage.models.includes("3.2_pro_m") ? "3.2_pro_m" : firstImage.models[0]) : ""),
         videoModel: current.videoModel || (firstVideo ? encodeChannelModel(firstVideo.id, firstVideo.models[0]) : ""),
     } }).config);
     return models.length;

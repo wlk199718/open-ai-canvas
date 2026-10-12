@@ -81,7 +81,7 @@ export function LocalGenerationSettingsPane() {
             <div className="settings-pane-header">
                 <div className="min-w-0">
                     <h2>本地生成服务</h2>
-                    <p>连接本机生成服务，将可用模型同步到创作页面。</p>
+                    <p>图片与视频模型会从本机生成服务自动同步，文字模型可自行配置。</p>
                 </div>
             </div>
             <div className="settings-section">
@@ -108,7 +108,7 @@ export function LocalGenerationSettingsPane() {
                     <div className="py-4 text-sm" role="status" aria-live="polite">
                         {status === "checking" ? "正在连接本地生成服务…" : status === "connected" ? `已连接 · 已同步 ${modelCount} 个模型` : "未连接"}
                         {error ? <p className="mt-2 text-destructive">{error}</p> : null}
-                        <p className="mt-2 text-muted-foreground">首次使用请打开管理客户端并激活卡密，完成后点击连接。已保存的连接会自动恢复。</p>
+                        <p className="mt-2 text-muted-foreground">首次使用请在管理客户端激活卡密并导入账号，然后点击连接。之后启动造物会自动连接并同步模型；无需逐个填写图片、视频渠道。</p>
                     </div>
                     <div className="flex flex-wrap gap-2 pb-3">
                         <Button type="primary" icon={<RefreshCw className="size-4" />} loading={status === "checking"} onClick={() => void syncModels()}>
