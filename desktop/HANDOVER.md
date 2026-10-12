@@ -2,11 +2,11 @@
 
 ## 在做什么
 
-把开源项目 open-ai-canvas（原名「影策」，上游仓库 ddcat-ai/open-ai-canvas）做成 Windows 桌面应用，并改名为「造物」(zaowu)。本分支的上游基线为 `6dedc597`；上游版权、许可证、Go module 与插件协议标识继续保留。
+把开源项目 open-ai-canvas（原名「影策」，上游仓库 ddcat-ai/open-ai-canvas）做成 Windows 桌面应用，并改名为「造物」(zaowu)。本分支已合并上游至 `e70fe1b9`；上游版权、许可证、Go module 与插件协议标识继续保留。
 
 方案：Electron 44 外壳 + Go 后端作为子进程，前端、Agent 运行时、官方插件包、LGPL ffmpeg 一起打进安装包。工作台与 SQLite 在本机运行；模型生成仍调用在线供应商，生成服务卡密仍需在线验证。
 
-当前版本：造物 `0.1.1`，造物生成服务 `0.1.4`。两端已打包并覆盖更新，统一存储、重启应用、原任务鉴权下载与既有文件迁移经过安装版验证；卸载流程仍待验收。
+当前源码版本：造物 `0.1.2`，造物生成服务 `0.1.4`。已备份并覆盖更新造物安装目录，实际安装版完成数据库结构 50 迁移、旧画布加载、operations 幂等保存、界面改名后刷新、11 个本地模型连接、共用保存目录与 12 个结果文件下载校验。详细范围见待测试清单；本轮未提交计费生成请求，卸载流程仍待验收。
 
 ## 代码位置
 
@@ -55,7 +55,7 @@ Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 npm run dist
 ```
 
-产物：`desktop/release/zaowu-setup-0.1.1.exe`。`FFMPEG_DIRECTORY` 是待替换的 LGPL ffmpeg 目录。开发调试用 `npm start`，先完成后端、前端构建及 `prepare-bundle`。生成服务单独按 [README](../local-provider/README.md) 构建；安装两个客户端后，造物会发现并启动本地生成服务。
+产物：`desktop/release/zaowu-setup-0.1.2.exe`。`FFMPEG_DIRECTORY` 是待替换的 LGPL ffmpeg 目录。开发调试用 `npm start`，先完成后端、前端构建及 `prepare-bundle`。生成服务单独按 [README](../local-provider/README.md) 构建；安装两个客户端后，造物会发现并启动本地生成服务。
 
 ## 注意事项
 
@@ -69,6 +69,7 @@ npm run dist
 - 默认深色主题；文本模型使用「设置 → 个人渠道」填写地址和 API Key，再在「模型选择」设置默认文本模型。
 - 图片和视频账号、卡密与供应商设置由生成服务客户端管理；造物「本地生成服务」负责连接与模型同步。
 - 造物「设置 → 文件存储」管理共用保存根目录，两端读取 `%LOCALAPPDATA%\Zaowu\storage.json`；生成结果与项目素材分目录存放，账号和数据库位置不随之迁移。
+- 本次上游合并将画布保存统一到 operations API，数据库结构升级至 50。前后端需同时更新，升级前备份数据库；画布历史版本界面和原 HTTP 入口由上游移除，已有快照表仍保留。
 
 ## 没做完 / 下一步
 
