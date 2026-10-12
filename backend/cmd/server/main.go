@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net"
@@ -34,6 +35,14 @@ func main() {
 	logging.Setup(logConfig)
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	if os.Getenv("CANVAS_SHUTDOWN_ON_STDIN_EOF") == "1" {
+		// 桌面端：Windows 无法向子进程发送 SIGTERM，父进程关闭 stdin 即触发优雅退出。
+		go func() {
+			_, _ = io.Copy(io.Discard, os.Stdin)
+			slog.Info("stdin closed by desktop shell, shutting down")
+			stop()
+		}()
+	}
 	if err := run(ctx); err != nil {
 		log.Fatal(err)
 	}
@@ -76,6 +85,9 @@ func run(ctx context.Context) error {
 	repo := repository.New(db)
 	addr := env("CANVAS_BACKEND_ADDR", ":8080")
 	svc := service.New(repo, dataDir)
+	if err := svc.ConfigureLocalResourceDirectory(os.Getenv("CANVAS_RESOURCE_DIR")); err != nil {
+		return fmt.Errorf("配置本地素材目录失败：%w", err)
+	}
 	if updaterToken := strings.TrimSpace(os.Getenv("CANVAS_UPDATER_TOKEN")); updaterToken != "" {
 		svc.ConfigureUpdateManager(updaterclient.New(env("CANVAS_UPDATER_SOCKET", "/run/open-ai-canvas-updater/updater.sock"), updaterToken))
 	}
@@ -121,7 +133,15 @@ func run(ctx context.Context) error {
 	registerSystemStatusRoutes(api, status)
 	handler.RegisterOAuthCallbackRoutes(r, svc)
 	handler.RegisterCanvasAPI(api, svc)
-	r.NoRoute(handler.SystemProxyNoRouteHandler(svc))
+	if os.Getenv("CANVAS_DESKTOP_FFMPEG") == "1" {
+		registerDesktopFFmpegRoutes(api, svc)
+	}
+	noRoute := handler.SystemProxyNoRouteHandler(svc)
+	if webDir := strings.TrimSpace(os.Getenv("CANVAS_WEB_DIR")); webDir != "" {
+		// 桌面端：后端同源托管前端，cookie 与 SSE 无需额外代理。
+		noRoute = webStaticHandler(webDir, noRoute)
+	}
+	r.NoRoute(noRoute)
 
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {

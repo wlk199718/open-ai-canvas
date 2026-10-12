@@ -544,7 +544,10 @@ export default function TasksPage() {
 }
 
 function canQueryProviderTask(task: GenerationTask) {
-    return task.status === "failed" && !task.mediaStage && (task.type.startsWith("canvas_video") || task.type.startsWith("video_")) && Boolean(task.providerRequestId);
+    return task.status === "failed" && !task.mediaStage &&
+        (task.type.startsWith("canvas_video") || task.type.startsWith("video_") ||
+            task.type.startsWith("canvas_image") || task.type.startsWith("image_")) &&
+        Boolean(task.providerRequestId);
 }
 
 function reconcileTaskSummaries(current: GenerationTask[], next: GenerationTask[]) {

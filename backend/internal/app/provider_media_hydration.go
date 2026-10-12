@@ -47,9 +47,9 @@ func (s *Service) hydrateGenerationMedia(userID string, input *canvasGenerationI
 func (s *Service) hydrateProviderMedia(userID string, media *providerMedia, policy providerMediaHydrationPolicy) error {
 	if !strings.HasPrefix(media.StorageKey, "resource:") {
 		if policy.requireURL && strings.HasPrefix(strings.TrimSpace(media.DataURL), "data:") {
-			return errors.New("当前 JSON 视频协议的参考素材不能使用内嵌数据，请先上传到对象存储或提供公网素材地址")
+			return publicMediaURLRequiredError(nil)
 		}
-		return nil
+		return normalizeInlineMediaType(media)
 	}
 	resourceID := strings.TrimPrefix(media.StorageKey, "resource:")
 	resource, err := s.repo.ResourceForUser(userID, resourceID)
@@ -69,6 +69,9 @@ func (s *Service) hydrateProviderMedia(userID string, media *providerMedia, poli
 	if useObjectURL {
 		signedURL, err := s.providerResourceURL(resource, time.Time{})
 		if err != nil {
+			if policy.requireURL && publicMediaURLUnavailable(resource, err) {
+				return publicMediaURLRequiredError(err)
+			}
 			return fmt.Errorf("生成参考素材地址失败：%w", err)
 		}
 		media.URL = signedURL
@@ -82,7 +85,7 @@ func (s *Service) hydrateProviderMedia(userID string, media *providerMedia, poli
 	}
 	// Agent 看图以归属校验后的资源文件为准，不能让附带的内嵌内容替换真实图片。
 	if !policy.imageOnly && strings.HasPrefix(strings.TrimSpace(media.DataURL), "data:") {
-		return nil
+		return normalizeInlineMediaType(media)
 	}
 	resource, body, err := s.OpenResource(userID, resourceID)
 	if err != nil {
@@ -120,6 +123,51 @@ func (s *Service) hydrateProviderMedia(userID string, media *providerMedia, poli
 	return nil
 }
 
+func normalizeInlineMediaType(media *providerMedia) error {
+	if !strings.HasPrefix(strings.TrimSpace(media.DataURL), "data:image/") {
+		return nil
+	}
+	declared, data, err := decodeProviderDataURL(strings.TrimSpace(media.DataURL))
+	if err != nil {
+		return err
+	}
+	mimeType := normalizedMediaMimeType(declared, data)
+	media.DataURL = dataURL(mimeType, data)
+	media.MimeType = mimeType
+	return nil
+}
+
+// ReasonPublicMediaURLRequired：当前模型协议只接受公网素材地址，而参考素材无法生成模型服务可访问的地址
+// （常见于桌面版或未配置对象存储的本地存储部署）。前端按该 reason / 文案给出配置指引。
+const ReasonPublicMediaURLRequired ErrorReason = "public_media_url_required"
+
+const publicMediaURLRequiredMessage = "当前视频模型需要公网可访问的参考素材地址，本地存储的素材无法被模型服务读取。" +
+	"请在「设置 → 我的对象存储」启用阿里云 OSS、腾讯云 COS、七牛云或 S3 兼容存储后，重新上传参考素材再生成；" +
+	"或改用支持直接上传素材的模型。"
+
+func publicMediaURLRequiredError(cause error) *AppError {
+	err := NewAppError(http.StatusBadRequest, publicMediaURLRequiredMessage)
+	err.Reason = ReasonPublicMediaURLRequired
+	err.Cause = cause
+	return err
+}
+
+// publicMediaURLUnavailable 判断签发失败是否属于「没有可公网访问的地址」，其他错误（签名异常、过期等）保持原样上报。
+func publicMediaURLUnavailable(resource *model.Resource, err error) bool {
+	var appErr *AppError
+	if !errors.As(err, &appErr) {
+		return false
+	}
+	if !resourceUsesObjectStorage(resource) {
+		// 本地存储只有在配置了服务器访问地址时才能对外提供素材；其他错误（磁盘、签名等）保留原因
+		return appErr.Reason == reasonPublicBaseURLUnconfigured
+	}
+	return appErr.Reason == "resource_origin_private"
+}
+
+// reasonPublicBaseURLUnconfigured 标记本地存储缺少服务器访问地址（CANVAS_PUBLIC_BASE_URL）。
+const reasonPublicBaseURLUnconfigured ErrorReason = "public_base_url_unconfigured"
+
 func resourceUsesObjectStorage(resource *model.Resource) bool {
 	if resource == nil {
 		return false
@@ -130,9 +178,14 @@ func resourceUsesObjectStorage(resource *model.Resource) bool {
 
 func normalizedMediaMimeType(declared string, data []byte) string {
 	declared = strings.TrimSpace(strings.Split(declared, ";")[0])
+	detected := strings.TrimSpace(strings.Split(http.DetectContentType(data), ";")[0])
+	// 上游响应头和历史资源可能误标图片格式，内联头必须与实际字节一致。
+	switch detected {
+	case "image/png", "image/jpeg", "image/webp", "image/gif":
+		return detected
+	}
 	if declared != "" && declared != "application/octet-stream" {
 		return declared
 	}
-	detected := strings.TrimSpace(strings.Split(http.DetectContentType(data), ";")[0])
 	return defaultString(detected, "application/octet-stream")
 }

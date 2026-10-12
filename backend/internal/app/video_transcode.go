@@ -180,7 +180,7 @@ func (s *Service) maybeStartPlaybackTranscode(resource *model.Resource) {
 		markPlaybackNone(s, resource)
 		return
 	}
-	src := filepath.Join(s.dataDir, "resources", filepath.FromSlash(resource.ObjectKey))
+	src := filepath.Join(s.localResourceRoot(), filepath.FromSlash(resource.ObjectKey))
 	switch probeVideoCodec(src) {
 	case videoCodecH265, videoCodecMPEG4:
 		// H.265 与 MPEG-4 Part 2（mp4v）Chromium/Firefox/Edge 均不能解码：
@@ -272,12 +272,13 @@ func runH264Transcode(src string, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 		return err
 	}
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-		"-i", src,
-		"-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+	args := []string{"-hide_banner", "-loglevel", "error", "-y", "-i", src}
+	args = append(args, h264VideoCodecArgs()...)
+	args = append(args,
 		"-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
 		"-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
 		dst)
+	cmd := exec.Command("ffmpeg", args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

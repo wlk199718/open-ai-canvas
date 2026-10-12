@@ -5,6 +5,14 @@ description: 信封、错误码与 OpenAPI
 
 # HTTP API 合同
 
+## 已有图片与视频任务恢复
+
+`POST /api/tasks/:id/query-provider` 支持查询当前用户失败的声明式图片或视频任务。
+必须存在上游任务编号；已有媒体保存检查点的任务仍使用 `recover-media`。
+查询只执行已有任务的 poll / result，不重新提交 create；恢复沿用原任务编号、归属校验、
+恢复租约、资源落库与结算流程。上游仍在处理时返回 `recovered: false`，成功保存后返回
+`recovered: true` 和恢复后的任务。
+
 ## Agent 画布权限与大事件
 
 自由画布和项目关联画布均使用 `canvas_projects`。Agent 运行时按登录账号和画布 ID 查询归属，不能把所属项目 ID 当作画布 ID；画布不存在、属于其他账号或数据库读取失败时，不声明读写及导出权限。
@@ -53,6 +61,8 @@ handle 放错端点、格式错误或行 ID 不存在时，工具错误回执提
 ## 资源访问与 OSS/CDN 分发
 
 普通上传、分片合并及 URL 导入按内容签名识别 MIME，不以客户端声明或文件扩展名决定媒体类型；无法识别的内容仍可作为附件上传。上传标识对应的 ready/failed 重试均先读取内容，并核对检测后的 MIME、资源类型与大小；不一致返回 409，不覆盖原对象。这是内容判型与元数据一致性校验，不是完整格式解码或内容摘要去重。
+
+生成图片落库以及参考图转换为内联 data URL 时，PNG、JPEG、WebP、GIF 的内容签名优先于声明的 MIME，避免上游错误响应头或历史图片元数据使 data URL 标头与实际字节不一致。已有资源仍先校验归属和就绪状态，读取上限保持生效；不因格式纠正重新生成或转码图片。
 
 非媒体文件（包括可执行脚本的 SVG）通过平台本地读取或代理交付，强制 `Content-Disposition: attachment` 与 `Content-Security-Policy: sandbox; default-src 'none'`，不向浏览器或访问描述返回其 OSS/CDN 直链。普通图片、音频及视频保持原有媒体分发规则。历史资源不在本次变更中批量重新判型。
 
@@ -428,3 +438,16 @@ CSV 使用中文表头、UTF-8 BOM、CRLF；金额按整数分精确转换为两
 新增登录读取 `/api/skills/curation` 与管理员 GET／PUT `/api/admin/skill-curation`；原技能列表仅在策展开启时应用新增分类筛选，响应结构不变。见 [接口与行为](./skill-curation)。
 
 一级分类扩展：管理写入增加 root 命令，assignment.rootId 与子分类完整集合一起保存；列表增加 platformRootId 筛选。关闭模式继续忽略新增筛选。
+## 独立生成服务运行设置
+
+以下端点属于本机独立生成服务，不属于造物业务后端的 JSON 信封 API；使用有效卡密签发的管理 Bearer 会话：
+
+| 方法与路径 | 用途 |
+| --- | --- |
+| `GET /api/admin/runtime-settings/{kind}` | 读取 `wan/video/image` 独立配置 |
+| `PUT /api/admin/wan-settings` | 保存 Wan 并发、阈值、各阶段超时、读取重试、压缩及代理配置 |
+| `PUT /api/admin/video-settings` | 保存 Q4 / Claw 超时、并发、阈值、Q4 浏览器辅助及代理配置 |
+| `PUT /api/admin/image-settings` | 保存图片独立超时、并发、阈值和代理配置 |
+| `POST /api/admin/video-browser/restart` | 重置 Q4 常驻窗口；运行中返回 409 |
+
+运行配置读取不返回代理地址，只返回 `proxy_configured`。写入省略 `proxy_server` 保留已加密代理，传空字符串清除；输入错误返回 422，响应不回显卡密、Cookie 或代理输入值。旧 Cookie 设置仅在升级时一次性迁入新配置，不再提供共用设置写接口。详细参数与代理支持范围见本地生成服务 README。

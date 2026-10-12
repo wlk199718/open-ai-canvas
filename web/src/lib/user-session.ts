@@ -1,4 +1,5 @@
 import { getFeatureAvailability, type AuthSessionPayload } from "@/services/api/auth";
+import { restoreLocalGenerationConnection } from "@/services/local-generation";
 import { getModelCatalog, type CapabilitySpec, type ModelCatalogResponse, type OptionConstraint, type PublicChannelCatalog } from "@/services/api/logical-models";
 import { localForageStorage } from "@/lib/localforage-storage";
 import { appQueryClient } from "@/lib/query-client";
@@ -123,6 +124,13 @@ async function hydrateUserSessionData(payload: AuthSessionPayload, generation: n
             }
         } catch (error) {
             if (isCurrentSession(generation, userId)) console.warn("模型目录后台刷新失败，保留本地配置", error);
+        }
+        if (isCurrentSession(generation, userId) && import.meta.env.VITE_DESKTOP === "1") {
+            try {
+                await restoreLocalGenerationConnection();
+            } catch {
+                console.warn("本地生成服务未就绪，请在设置→本地生成服务中重新连接");
+            }
         }
     })();
     if (isCurrentSession(generation, userId)) {

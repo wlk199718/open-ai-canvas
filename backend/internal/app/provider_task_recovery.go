@@ -322,8 +322,11 @@ func (s *Service) queryFailedVideoTask(ctx context.Context, task *model.Task, cl
 	if task.MediaRecoveryJSON != "" {
 		return nil, BadAuthRequest("该任务已生成作品，请在任务中心重试保存，无需重新查询生成")
 	}
-	if !strings.HasPrefix(task.Type, "canvas_video") && !strings.HasPrefix(task.Type, "video_") {
-		return nil, BadAuthRequest("该任务不是视频生成任务")
+	if !strings.HasPrefix(task.Type, "canvas_video") &&
+		!strings.HasPrefix(task.Type, "video_") &&
+		!strings.HasPrefix(task.Type, "canvas_image") &&
+		!strings.HasPrefix(task.Type, "image_") {
+		return nil, BadAuthRequest("该任务不是可查询的图片或视频生成任务")
 	}
 
 	s.hydrateTaskProviderRequestID(task)
@@ -386,7 +389,7 @@ func (s *Service) queryFailedVideoTask(ctx context.Context, task *model.Task, cl
 	var providerStatus string
 	result, providerStatus, err = queryProtocolAdapterVideoTask(queryCtx, input, adapter, providerRequestID)
 	if err != nil {
-		_ = s.log(task.UserID, task.ID, "error", "人工查询上游视频任务失败", err.Error())
+		_ = s.log(task.UserID, task.ID, "error", "人工查询上游图片或视频任务失败", err.Error())
 		return nil, err
 	}
 	if result == nil {
@@ -396,7 +399,7 @@ func (s *Service) queryFailedVideoTask(ctx context.Context, task *model.Task, cl
 
 	result, err = s.persistGeneratedMediaResult(task.UserID, result)
 	if err != nil {
-		_ = s.log(task.UserID, task.ID, "error", "人工查询已取得视频，但结果保存失败", err.Error())
+		_ = s.log(task.UserID, task.ID, "error", "人工查询已取得媒体，但结果保存失败", err.Error())
 		return nil, err
 	}
 	resultJSON, err := json.Marshal(result)
@@ -408,7 +411,7 @@ func (s *Service) queryFailedVideoTask(ctx context.Context, task *model.Task, cl
 	task.NextPollAt = nil
 	if err := s.saveTaskCompletionWithinStorageQuota(task, resultJSON, nil, false); err != nil {
 		uncertainErr := billing.MarkBillingUncertain(task.BillingOrderID, "人工查询确认上游成功，但任务结果未保存："+err.Error())
-		_ = s.log(task.UserID, task.ID, "error", "人工查询已取得视频，但任务恢复失败", err.Error())
+		_ = s.log(task.UserID, task.ID, "error", "人工查询已取得媒体，但任务恢复失败", err.Error())
 		if uncertainErr != nil {
 			return nil, errors.Join(err, fmt.Errorf("记录任务结果未保存的计费待核对状态失败：%w", uncertainErr))
 		}

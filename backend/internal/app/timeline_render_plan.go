@@ -258,8 +258,10 @@ func buildRenderFFmpegArgs(plan renderPlan, target string) []string {
 
 	args = append(args,
 		"-filter_complex", strings.Join(filters, ";"),
-		"-map", "[vout]", "-map", "[aout]",
-		"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+		"-map", "[vout]", "-map", "[aout]")
+	args = append(args, h264VideoCodecArgs()...)
+	args = append(args,
+		"-pix_fmt", "yuv420p",
 		"-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
 		"-t", fmt.Sprintf("%.3f", planTotalSeconds(plan)),
 		target,

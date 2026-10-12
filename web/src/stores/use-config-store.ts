@@ -375,7 +375,12 @@ export const useConfigStore = create<ConfigStore>()(
         {
             name: CONFIG_STORE_KEY,
             storage: createJSONStorage(() => scopedLocalStorage),
-            partialize: (state) => ({ config: state.config }),
+            partialize: (state) => ({
+                config: {
+                    ...state.config,
+                    channels: state.config.channels.map((channel) => channel.id.startsWith("zaowu-local-") ? { ...channel, apiKey: "" } : channel),
+                },
+            }),
             merge: (persisted, current) => {
                 const persistedState = (persisted || {}) as Partial<ConfigStore>;
                 return {

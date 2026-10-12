@@ -311,3 +311,19 @@ Schema 32 为 `channel_models` 新增 `tags`（TEXT、NOT NULL、默认 `'[]'`�
 迁移 46 新增 skill_curation_settings、skill_curation_categories、skill_curation_assignments；默认关闭，不导入技能内容。表结构与事务规则见 [平台技能策展](./skill-curation)。
 
 迁移 47 依赖 46，新增 skill_curation_roots 与 skill_curation_root_assignments；保留原五个根 ID，根停用时使用派生默认桶，根表为空回落固定五类。
+
+## 可选本地生成服务数据库
+
+`local-provider` 使用独立的 `provider.sqlite3`，不进入主后端 GORM 迁移。启动由 `app/store.py` 创建缺失表和列，已有账号数据保留。
+
+| 表 / 字段 | 用途 | 边界 |
+| --- | --- | --- |
+| `accounts.wan_login_email` | 导入文件中的登录邮箱 | Windows DPAPI 加密 BLOB；不在管理 API 返回原文。历史账号为空时无法执行 API 登录恢复 |
+| `accounts.wan_state_json` | 每日/每周任务、活动、体验余量和最近操作结果 | 只是最近一次核查摘要；表格刷新读取摘要，不自动执行领取或生成 |
+| `accounts.claw_state_json` | Claw 工作区、固定消息操作状态与回执 | 普通核查合并工作区状态，不覆盖消息记录；发送前保存 `sending`，提交结果未知保存 `unknown`，成功或未知记录不能通过重置绕过重复发送限制 |
+| `settings` 的 `cookie_settings` | Cookie 池并发和运行参数 | 保存核查并发、Claw 消息并发、查询/上传/提交/下载超时、轮询间隔和总查询超时；字段由管理接口严格校验，不存账号凭据 |
+| `claims` | 按账号、任务和周期保存领取状态 | 请求发出前写 `unknown`；响应丢失只复核，确认后写 `claimed`。兑换码键使用 SHA-256 摘要，周期为 `once`，不保存原兑换码 |
+| `wan_experiences` | 免费体验任务尝试与上游回执 | `(account_id, experience_id)` 联合主键；`status/task_id/receipt_json/updated_at` 保存提交与查询状态，刷新不重复提交 |
+| `settings` 的 `archived_account:*` | 失效与耗尽清理的账号归档 | 删除前同事务保留记录，凭据保留加密格式；有未结束任务或消息操作的账号不清理；视频耗尽清理针对核查成功且视频积分为零的视频小号，图片耗尽清理针对核查成功、图片积分低于 50 且无剩余试用次数的图片小号，通用账号不做耗尽清理 |
+
+登录密码不入库、不写日志、不进入浏览器启动参数。浏览器会话使用独立临时目录，卡密会话、客户端令牌与主后端登录仍是不同的鉴权边界。

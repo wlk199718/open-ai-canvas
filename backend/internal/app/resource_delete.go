@@ -330,7 +330,7 @@ func (s *Service) deleteStoredResourceObject(userID string, resource *model.Reso
 }
 
 func (s *Service) deleteLocalResourceObject(objectKey string) error {
-	root, err := filepath.Abs(filepath.Join(s.dataDir, "resources"))
+	root, err := filepath.Abs(s.localResourceRoot())
 	if err != nil {
 		return fmt.Errorf("解析本地资源目录失败：%w", err)
 	}

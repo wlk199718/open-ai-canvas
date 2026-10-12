@@ -1,6 +1,6 @@
 import { App, Button, InputNumber } from "antd";
 import { SettingsRow } from "@/components/ui/product/settings-row";
-import { ArrowLeft, Boxes, Brain, Bug, Cloud, MessageSquareText, RadioTower, SlidersHorizontal, Workflow } from "lucide-react";
+import { ArrowLeft, Boxes, Brain, Bug, Cloud, FolderOpen, MessageSquareText, PlugZap, RadioTower, SlidersHorizontal, Workflow } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -16,11 +16,15 @@ import AgentMemoryPane from "./agent-memory-pane";
 import { RunningHubSettingsPane } from "./runninghub-settings-pane";
 import { RUNNINGHUB_PLUGIN_ID } from "@/lib/plugins/builtin/workflows";
 import { usePluginStore } from "@/stores/use-plugin-store";
+import { LocalGenerationSettingsPane } from "./local-generation-settings-pane";
+import { FileStorageSettingsPane } from "./file-storage-settings-pane";
 
-type ConfigSectionKey = "channels" | "models" | "runninghub" | "preferences" | "prompts" | "agent-memory" | "storage" | "diagnostics";
+type ConfigSectionKey = "channels" | "models" | "runninghub" | "local-generation" | "file-storage" | "preferences" | "prompts" | "agent-memory" | "storage" | "diagnostics";
 
 const configSections: Array<{ key: ConfigSectionKey; label: string; description: string; icon: ReactNode }> = [
     { key: "channels", label: "个人渠道", description: "模型服务与个人工作流", icon: <RadioTower className="size-4" /> },
+    ...(import.meta.env.VITE_DESKTOP === "1" ? [{ key: "local-generation" as const, label: "本地生成服务", description: "连接本机服务并同步模型", icon: <PlugZap className="size-4" /> }] : []),
+    ...(import.meta.env.VITE_DESKTOP === "1" ? [{ key: "file-storage" as const, label: "文件存储", description: "统一图片与视频保存位置", icon: <FolderOpen className="size-4" /> }] : []),
     { key: "runninghub", label: "RunningHub 工作流", description: "个人渠道的云端工作流配置", icon: <Workflow className="size-4" /> },
     { key: "models", label: "模型选择", description: "按领域选择默认模型", icon: <Boxes className="size-4" /> },
     { key: "preferences", label: "生成偏好", description: "画布生成默认值", icon: <SlidersHorizontal className="size-4" /> },
@@ -117,6 +121,8 @@ export default function SettingsPage() {
             </SettingsPane>
         ),
         runninghub: <SettingsPane><RunningHubSettingsPane /></SettingsPane>,
+        "local-generation": <SettingsPane><LocalGenerationSettingsPane /></SettingsPane>,
+        "file-storage": <SettingsPane><FileStorageSettingsPane /></SettingsPane>,
         preferences: (
             <SettingsPane>
                 <div className="settings-pane-header">

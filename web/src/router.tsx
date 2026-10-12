@@ -185,7 +185,7 @@ export const router = createBrowserRouter([
             { path: "/canvas/:id", element: <RequireAuth><CanvasProjectPage /></RequireAuth> },
             {
                 path: "/admin",
-                element: <RequireAuth>{deferred(<AdminPage />)}</RequireAuth>,
+                element: import.meta.env.VITE_DESKTOP === "1" ? <Navigate to="/settings?section=local-generation" replace /> : <RequireAuth>{deferred(<AdminPage />)}</RequireAuth>,
                 children: [
                     { index: true, element: <AnalyticsPage /> },
                     { path: "users", element: <UsersPage /> },

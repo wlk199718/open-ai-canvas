@@ -28,6 +28,7 @@ docs/content/docs/backend/*
 !docs/content/docs/backend/newapi-channel-2.mdx
 !docs/content/docs/backend/video-token-billing.mdx
 !docs/content/docs/backend/creative-agent-runtime.mdx
+!docs/content/docs/backend/local-file-storage.mdx
 # Keep the creative Agent design versioned without unignoring generated docs.
 !docs/content/docs/overview/
 docs/content/docs/overview/*
@@ -78,3 +79,26 @@ backend/tmp_*
 # Keep the runtime in source control; its optional debug map is not deployed.
 /web/public/live2d/live2dcubismcore.min.js.map
 .zocde/
+desktop-build/
+
+# Local provider development artifacts.
+/local-provider/.venv/
+/local-provider/.smoke-data/
+/local-provider/__pycache__/
+/local-provider/app/__pycache__/
+/local-provider/tests/__pycache__/
+/local-provider/ui/node_modules/
+/local-provider/ui/dist/
+/local-provider/ui/*.tsbuildinfo
+/local-provider/desktop/node_modules/
+/local-provider/desktop/bundle/
+/local-provider/desktop/release/
+/local-provider/build/
+/local-provider/dist/
+/local-provider/app/providers/__pycache__/
+# Host credentials and imported account archives never belong in source control.
+**/__pycache__/
+*.pyc
+*.vault
+account_vault_private.pem
+local-account.bin

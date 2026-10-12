@@ -1,29 +1,26 @@
-import { FFmpeg } from "@ffmpeg/ffmpeg";
-import ffmpegCoreURL from "@ffmpeg/core?url";
-import ffmpegWasmURL from "@ffmpeg/core/wasm?url";
 import { fetchFile } from "@ffmpeg/util";
 import { getMediaBlob } from "@/services/file-storage";
 import { buildRecordingTranscodeArgs } from "./canvas-video-merge-args";
+import { DesktopFFmpeg, type FFmpegLike } from "./desktop-ffmpeg";
 
 export type MergeVideoInput = { id: string; url?: string; storageKey?: string };
 export type MergeVideoProgress = { phase: "loading" | "reading" | "encoding"; progress: number };
 
-let ffmpegPromise: Promise<FFmpeg> | null = null;
+let ffmpegPromise: Promise<FFmpegLike> | null = null;
 
 // ffmpeg 只在用户明确合并视频时加载，避免把 wasm 和 worker 放进画布首屏包体。
+// 桌面端改走后端随包的 LGPL ffmpeg（见 desktop-ffmpeg.ts）。
 export async function loadFFmpeg(onProgress?: (progress: MergeVideoProgress) => void) {
     if (!ffmpegPromise) {
-        ffmpegPromise = (async () => {
-            const ffmpeg = new FFmpeg();
+        ffmpegPromise = (async (): Promise<FFmpegLike> => {
             onProgress?.({ phase: "loading", progress: 0 });
+            if (import.meta.env.VITE_DESKTOP === "1") return new DesktopFFmpeg();
             try {
-                // 核心资产随前端同源发布，避免自部署环境首次合并依赖第三方 CDN。
-                await ffmpeg.load({ coreURL: ffmpegCoreURL, wasmURL: ffmpegWasmURL });
+                const { loadWasmFFmpeg } = await import("./ffmpeg-wasm-loader");
+                return (await loadWasmFFmpeg()) as unknown as FFmpegLike;
             } catch (cause) {
-                ffmpeg.terminate();
                 throw new Error("视频合并工具加载失败，请刷新页面后重试", { cause });
             }
-            return ffmpeg;
         })();
     }
     try {

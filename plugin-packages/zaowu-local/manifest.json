@@ -1,0 +1,495 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "zaowu-local",
+  "name": "造物本地生成",
+  "version": "1.0.0",
+  "author": "造物",
+  "description": "连接本机图片、Wan、Q4 和 Claw 生成服务。",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "连接令牌",
+        "required": true
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "zaowu-local-image",
+        "label": "本地图片",
+        "capabilities": [
+          "image"
+        ],
+        "scopes": [
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "http://127.0.0.1:8787",
+        "requiresPublicMediaUrls": false,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "create": {
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "originPath": true,
+          "contentType": "application/json",
+          "headers": {
+            "Idempotency-Key": {
+              "$ref": "request.extra.idempotencyKey"
+            }
+          },
+          "body": {
+            "provider": "image",
+            "task_type": "image",
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "aspect_ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "1:1"
+              ]
+            },
+            "resolution": {
+              "$coalesce": [
+                {
+                  "$ref": "request.quality"
+                },
+                "1080p"
+              ]
+            },
+            "sample_count": 1,
+            "references": {
+              "$map": {
+                "from": {
+                  "$sortByOrder": {
+                    "$ref": "request.images"
+                  }
+                },
+                "as": "media",
+                "in": {
+                  "$coalesce": [
+                    {
+                      "$ref": "media.dataUrl"
+                    },
+                    {
+                      "$ref": "media.url"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{{taskId}}",
+          "originPath": true
+        },
+        "result": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{{taskId}}/result",
+          "originPath": true
+        },
+        "response": {
+          "taskIdPaths": [
+            "id"
+          ],
+          "statusPaths": [
+            "status"
+          ],
+          "messagePaths": [
+            "error"
+          ],
+          "resultKind": "image",
+          "status": {
+            "$switch": {
+              "cases": [
+                {
+                  "when": {
+                    "$in": [
+                      {
+                        "$ref": "response.status"
+                      },
+                      [
+                        "poll_failed",
+                        "download_failed",
+                        "submission_unknown"
+                      ]
+                    ]
+                  },
+                  "then": "failed"
+                }
+              ],
+              "default": {
+                "$ref": "response.status"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "zaowu-local-q4",
+        "label": "本地 Q4 视频",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "http://127.0.0.1:8787",
+        "requiresPublicMediaUrls": false,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "create": {
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "originPath": true,
+          "contentType": "application/json",
+          "headers": {
+            "Idempotency-Key": {
+              "$ref": "request.extra.idempotencyKey"
+            }
+          },
+          "body": {
+            "provider": "q4-video",
+            "task_type": "video",
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "duration": {
+              "$ref": "request.duration"
+            },
+            "aspect_ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "resolution": {
+              "$coalesce": [
+                {
+                  "$ref": "request.resolution"
+                },
+                "720p"
+              ]
+            },
+            "sample_count": 1,
+            "references": {
+              "$map": {
+                "from": {
+                  "$sortByOrder": {
+                    "$ref": "request.images"
+                  }
+                },
+                "as": "media",
+                "in": {
+                  "$coalesce": [
+                    {
+                      "$ref": "media.dataUrl"
+                    },
+                    {
+                      "$ref": "media.url"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{{taskId}}",
+          "originPath": true
+        },
+        "result": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{{taskId}}/result",
+          "originPath": true
+        },
+        "response": {
+          "taskIdPaths": [
+            "id"
+          ],
+          "statusPaths": [
+            "status"
+          ],
+          "messagePaths": [
+            "error"
+          ],
+          "resultKind": "video",
+          "status": {
+            "$switch": {
+              "cases": [
+                {
+                  "when": {
+                    "$in": [
+                      {
+                        "$ref": "response.status"
+                      },
+                      [
+                        "poll_failed",
+                        "download_failed",
+                        "submission_unknown"
+                      ]
+                    ]
+                  },
+                  "then": "failed"
+                }
+              ],
+              "default": {
+                "$ref": "response.status"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "zaowu-local-claw",
+        "label": "本地 Claw 视频",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "http://127.0.0.1:8787",
+        "requiresPublicMediaUrls": false,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "create": {
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "originPath": true,
+          "contentType": "application/json",
+          "headers": {
+            "Idempotency-Key": {
+              "$ref": "request.extra.idempotencyKey"
+            }
+          },
+          "body": {
+            "provider": "claw-video",
+            "task_type": "video",
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "duration": {
+              "$ref": "request.duration"
+            },
+            "aspect_ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "resolution": {
+              "$coalesce": [
+                {
+                  "$ref": "request.resolution"
+                },
+                "720p"
+              ]
+            },
+            "sample_count": 1,
+            "references": []
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{{taskId}}",
+          "originPath": true
+        },
+        "result": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{{taskId}}/result",
+          "originPath": true
+        },
+        "response": {
+          "taskIdPaths": [
+            "id"
+          ],
+          "statusPaths": [
+            "status"
+          ],
+          "messagePaths": [
+            "error"
+          ],
+          "resultKind": "video",
+          "status": {
+            "$switch": {
+              "cases": [
+                {
+                  "when": {
+                    "$in": [
+                      {
+                        "$ref": "response.status"
+                      },
+                      [
+                        "poll_failed",
+                        "download_failed",
+                        "submission_unknown"
+                      ]
+                    ]
+                  },
+                  "then": "failed"
+                }
+              ],
+              "default": {
+                "$ref": "response.status"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "zaowu-local-wan",
+        "label": "本地 Wan 视频",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "http://127.0.0.1:8787",
+        "requiresPublicMediaUrls": true,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "create": {
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "originPath": true,
+          "contentType": "application/json",
+          "headers": {
+            "Idempotency-Key": {
+              "$ref": "request.extra.idempotencyKey"
+            }
+          },
+          "body": {
+            "provider": "wan-video",
+            "task_type": "video",
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "duration": {
+              "$ref": "request.duration"
+            },
+            "aspect_ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "resolution": "1080p",
+            "sample_count": 1,
+            "references": {
+              "$map": {
+                "from": {
+                  "$sortByOrder": {
+                    "$ref": "request.images"
+                  }
+                },
+                "as": "media",
+                "in": {
+                  "$ref": "media.url"
+                }
+              }
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{{taskId}}",
+          "originPath": true
+        },
+        "result": {
+          "method": "GET",
+          "path": "/api/v1/tasks/{{taskId}}/result",
+          "originPath": true
+        },
+        "response": {
+          "taskIdPaths": [
+            "id"
+          ],
+          "statusPaths": [
+            "status"
+          ],
+          "messagePaths": [
+            "error"
+          ],
+          "resultKind": "video",
+          "status": {
+            "$switch": {
+              "cases": [
+                {
+                  "when": {
+                    "$in": [
+                      {
+                        "$ref": "response.status"
+                      },
+                      [
+                        "poll_failed",
+                        "download_failed",
+                        "submission_unknown"
+                      ]
+                    ]
+                  },
+                  "then": "failed"
+                }
+              ],
+              "default": {
+                "$ref": "response.status"
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "documentation": "# 造物本地生成\n\n把运行在本机的造物生成服务连接到桌面画布、创作页和 Agent。\n图片、Q4、Claw 和 Wan 使用独立协议，账号调度、积分和上游下载由中间服务负责。\n\n连接令牌通过本地控制中心获取；桌面端使用系统加密保存。\n\n---\n\n# 本地生成接口\n\n配置字段 `apiKey` 为生成连接令牌，不能使用管理会话令牌。\n\n创建 `POST /api/v1/tasks`，轮询 `GET /api/v1/tasks/{taskId}`，\n结果下载 `GET /api/v1/tasks/{taskId}/result`，三个阶段都使用 Bearer 鉴权。\n创建携带宿主幂等键，不重复提交计费任务。\n\n响应中的 `id`、`status`、`error` 分别映射任务 ID、状态和错误。\n`completed` 后由宿主鉴权下载图片或视频，再保存到本机素材库。\n`poll_failed`、`download_failed`、`submission_unknown` 按失败上报，可在服务管理页处理。\n\n图片与 Q4 接受内联 PNG/JPEG/WebP 参考图，由中间服务落盘再上传。\nWan 仍要求公开 HTTPS 参考素材，需在造物设置中配置对象存储；Claw 不接受参考图。\n当前每个任务只交付一个结果，模型配置限制输出数量为 1。\n模型、比例、分辨率和视频时长来自本地服务模型目录。\n\n<!-- YINGCE_MANIFEST_CONTRACT_START -->\n## Manifest 完整接口定义\n\n以下 JSON 与插件包内实际 `manifest.json` 逐字段一致，覆盖插件身份、权限、配置、鉴权、参数、校验、创建、Agent、查询、取消、结果下载、响应和 Agent 响应映射。`documentation` 字段的值就是当前完整文档；为避免文档在自身内部无限递归，JSON 中仅用等义占位文本表示正文。\n\n```json\n{\n  \"apiVersion\": \"yingce.plugin/v2\",\n  \"id\": \"zaowu-local\",\n  \"name\": \"造物本地生成\",\n  \"version\": \"1.0.0\",\n  \"author\": \"造物\",\n  \"description\": \"连接本机图片、Wan、Q4 和 Claw 生成服务。\",\n  \"permissions\": [\n    \"generation.run\",\n    \"media.read\"\n  ],\n  \"configuration\": {\n    \"fields\": [\n      {\n        \"name\": \"apiKey\",\n        \"type\": \"secret\",\n        \"label\": \"连接令牌\",\n        \"required\": true\n      }\n    ]\n  },\n  \"contributes\": {\n    \"providers\": [\n      {\n        \"id\": \"zaowu-local-image\",\n        \"label\": \"本地图片\",\n        \"capabilities\": [\n          \"image\"\n        ],\n        \"scopes\": [\n          \"user.custom-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"http://127.0.0.1:8787\",\n        \"requiresPublicMediaUrls\": false,\n        \"auth\": {\n          \"type\": \"bearer\",\n          \"field\": \"apiKey\"\n        },\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/api/v1/tasks\",\n          \"originPath\": true,\n          \"contentType\": \"application/json\",\n          \"headers\": {\n            \"Idempotency-Key\": {\n              \"$ref\": \"request.extra.idempotencyKey\"\n            }\n          },\n          \"body\": {\n            \"provider\": \"image\",\n            \"task_type\": \"image\",\n            \"model\": {\n              \"$ref\": \"request.model\"\n            },\n            \"prompt\": {\n              \"$ref\": \"request.prompt\"\n            },\n            \"aspect_ratio\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.aspectRatio\"\n                },\n                \"1:1\"\n              ]\n            },\n            \"resolution\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.quality\"\n                },\n                \"1080p\"\n              ]\n            },\n            \"sample_count\": 1,\n            \"references\": {\n              \"$map\": {\n                \"from\": {\n                  \"$sortByOrder\": {\n                    \"$ref\": \"request.images\"\n                  }\n                },\n                \"as\": \"media\",\n                \"in\": {\n                  \"$coalesce\": [\n                    {\n                      \"$ref\": \"media.dataUrl\"\n                    },\n                    {\n                      \"$ref\": \"media.url\"\n                    }\n                  ]\n                }\n              }\n            }\n          }\n        },\n        \"poll\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/tasks/{{taskId}}\",\n          \"originPath\": true\n        },\n        \"result\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/tasks/{{taskId}}/result\",\n          \"originPath\": true\n        },\n        \"response\": {\n          \"taskIdPaths\": [\n            \"id\"\n          ],\n          \"statusPaths\": [\n            \"status\"\n          ],\n          \"messagePaths\": [\n            \"error\"\n          ],\n          \"resultKind\": \"image\",\n          \"status\": {\n            \"$switch\": {\n              \"cases\": [\n                {\n                  \"when\": {\n                    \"$in\": [\n                      {\n                        \"$ref\": \"response.status\"\n                      },\n                      [\n                        \"poll_failed\",\n                        \"download_failed\",\n                        \"submission_unknown\"\n                      ]\n                    ]\n                  },\n                  \"then\": \"failed\"\n                }\n              ],\n              \"default\": {\n                \"$ref\": \"response.status\"\n              }\n            }\n          }\n        }\n      },\n      {\n        \"id\": \"zaowu-local-q4\",\n        \"label\": \"本地 Q4 视频\",\n        \"capabilities\": [\n          \"video\"\n        ],\n        \"scopes\": [\n          \"user.custom-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"http://127.0.0.1:8787\",\n        \"requiresPublicMediaUrls\": false,\n        \"auth\": {\n          \"type\": \"bearer\",\n          \"field\": \"apiKey\"\n        },\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/api/v1/tasks\",\n          \"originPath\": true,\n          \"contentType\": \"application/json\",\n          \"headers\": {\n            \"Idempotency-Key\": {\n              \"$ref\": \"request.extra.idempotencyKey\"\n            }\n          },\n          \"body\": {\n            \"provider\": \"q4-video\",\n            \"task_type\": \"video\",\n            \"model\": {\n              \"$ref\": \"request.model\"\n            },\n            \"prompt\": {\n              \"$ref\": \"request.prompt\"\n            },\n            \"duration\": {\n              \"$ref\": \"request.duration\"\n            },\n            \"aspect_ratio\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.aspectRatio\"\n                },\n                \"16:9\"\n              ]\n            },\n            \"resolution\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.resolution\"\n                },\n                \"720p\"\n              ]\n            },\n            \"sample_count\": 1,\n            \"references\": {\n              \"$map\": {\n                \"from\": {\n                  \"$sortByOrder\": {\n                    \"$ref\": \"request.images\"\n                  }\n                },\n                \"as\": \"media\",\n                \"in\": {\n                  \"$coalesce\": [\n                    {\n                      \"$ref\": \"media.dataUrl\"\n                    },\n                    {\n                      \"$ref\": \"media.url\"\n                    }\n                  ]\n                }\n              }\n            }\n          }\n        },\n        \"poll\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/tasks/{{taskId}}\",\n          \"originPath\": true\n        },\n        \"result\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/tasks/{{taskId}}/result\",\n          \"originPath\": true\n        },\n        \"response\": {\n          \"taskIdPaths\": [\n            \"id\"\n          ],\n          \"statusPaths\": [\n            \"status\"\n          ],\n          \"messagePaths\": [\n            \"error\"\n          ],\n          \"resultKind\": \"video\",\n          \"status\": {\n            \"$switch\": {\n              \"cases\": [\n                {\n                  \"when\": {\n                    \"$in\": [\n                      {\n                        \"$ref\": \"response.status\"\n                      },\n                      [\n                        \"poll_failed\",\n                        \"download_failed\",\n                        \"submission_unknown\"\n                      ]\n                    ]\n                  },\n                  \"then\": \"failed\"\n                }\n              ],\n              \"default\": {\n                \"$ref\": \"response.status\"\n              }\n            }\n          }\n        }\n      },\n      {\n        \"id\": \"zaowu-local-claw\",\n        \"label\": \"本地 Claw 视频\",\n        \"capabilities\": [\n          \"video\"\n        ],\n        \"scopes\": [\n          \"user.custom-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"http://127.0.0.1:8787\",\n        \"requiresPublicMediaUrls\": false,\n        \"auth\": {\n          \"type\": \"bearer\",\n          \"field\": \"apiKey\"\n        },\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/api/v1/tasks\",\n          \"originPath\": true,\n          \"contentType\": \"application/json\",\n          \"headers\": {\n            \"Idempotency-Key\": {\n              \"$ref\": \"request.extra.idempotencyKey\"\n            }\n          },\n          \"body\": {\n            \"provider\": \"claw-video\",\n            \"task_type\": \"video\",\n            \"model\": {\n              \"$ref\": \"request.model\"\n            },\n            \"prompt\": {\n              \"$ref\": \"request.prompt\"\n            },\n            \"duration\": {\n              \"$ref\": \"request.duration\"\n            },\n            \"aspect_ratio\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.aspectRatio\"\n                },\n                \"16:9\"\n              ]\n            },\n            \"resolution\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.resolution\"\n                },\n                \"720p\"\n              ]\n            },\n            \"sample_count\": 1,\n            \"references\": []\n          }\n        },\n        \"poll\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/tasks/{{taskId}}\",\n          \"originPath\": true\n        },\n        \"result\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/tasks/{{taskId}}/result\",\n          \"originPath\": true\n        },\n        \"response\": {\n          \"taskIdPaths\": [\n            \"id\"\n          ],\n          \"statusPaths\": [\n            \"status\"\n          ],\n          \"messagePaths\": [\n            \"error\"\n          ],\n          \"resultKind\": \"video\",\n          \"status\": {\n            \"$switch\": {\n              \"cases\": [\n                {\n                  \"when\": {\n                    \"$in\": [\n                      {\n                        \"$ref\": \"response.status\"\n                      },\n                      [\n                        \"poll_failed\",\n                        \"download_failed\",\n                        \"submission_unknown\"\n                      ]\n                    ]\n                  },\n                  \"then\": \"failed\"\n                }\n              ],\n              \"default\": {\n                \"$ref\": \"response.status\"\n              }\n            }\n          }\n        }\n      },\n      {\n        \"id\": \"zaowu-local-wan\",\n        \"label\": \"本地 Wan 视频\",\n        \"capabilities\": [\n          \"video\"\n        ],\n        \"scopes\": [\n          \"user.custom-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"http://127.0.0.1:8787\",\n        \"requiresPublicMediaUrls\": true,\n        \"auth\": {\n          \"type\": \"bearer\",\n          \"field\": \"apiKey\"\n        },\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/api/v1/tasks\",\n          \"originPath\": true,\n          \"contentType\": \"application/json\",\n          \"headers\": {\n            \"Idempotency-Key\": {\n              \"$ref\": \"request.extra.idempotencyKey\"\n            }\n          },\n          \"body\": {\n            \"provider\": \"wan-video\",\n            \"task_type\": \"video\",\n            \"model\": {\n              \"$ref\": \"request.model\"\n            },\n            \"prompt\": {\n              \"$ref\": \"request.prompt\"\n            },\n            \"duration\": {\n              \"$ref\": \"request.duration\"\n            },\n            \"aspect_ratio\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.aspectRatio\"\n                },\n                \"16:9\"\n              ]\n            },\n            \"resolution\": \"1080p\",\n            \"sample_count\": 1,\n            \"references\": {\n              \"$map\": {\n                \"from\": {\n                  \"$sortByOrder\": {\n                    \"$ref\": \"request.images\"\n                  }\n                },\n                \"as\": \"media\",\n                \"in\": {\n                  \"$ref\": \"media.url\"\n                }\n              }\n            }\n          }\n        },\n        \"poll\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/tasks/{{taskId}}\",\n          \"originPath\": true\n        },\n        \"result\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/tasks/{{taskId}}/result\",\n          \"originPath\": true\n        },\n        \"response\": {\n          \"taskIdPaths\": [\n            \"id\"\n          ],\n          \"statusPaths\": [\n            \"status\"\n          ],\n          \"messagePaths\": [\n            \"error\"\n          ],\n          \"resultKind\": \"video\",\n          \"status\": {\n            \"$switch\": {\n              \"cases\": [\n                {\n                  \"when\": {\n                    \"$in\": [\n                      {\n                        \"$ref\": \"response.status\"\n                      },\n                      [\n                        \"poll_failed\",\n                        \"download_failed\",\n                        \"submission_unknown\"\n                      ]\n                    ]\n                  },\n                  \"then\": \"failed\"\n                }\n              ],\n              \"default\": {\n                \"$ref\": \"response.status\"\n              }\n            }\n          }\n        }\n      }\n    ]\n  },\n  \"documentation\": \"<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>\"\n}\n```\n<!-- YINGCE_MANIFEST_CONTRACT_END -->\n"
+}

@@ -76,7 +76,7 @@ export function WorkspaceSidebarFooter({ expandedClassName, collapsedClassName, 
                                 </div>
                             </div>
 
-                            {user.role === "admin" ? (
+                            {user.role === "admin" && import.meta.env.VITE_DESKTOP !== "1" ? (
                                 <nav className="py-2" aria-label="管理工具">
                                     <MenuLink to="/admin" icon={<ShieldCheck />} label="管理员后台" onNavigate={() => setMenuOpen(false)} />
                                 </nav>

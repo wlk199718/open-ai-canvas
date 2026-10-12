@@ -1,0 +1,9 @@
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+requests[socks]>=2.32,<3
+PyYAML>=6,<7
+Pillow>=11,<13
+websocket-client>=1.8,<2
+cryptography>=43,<49
+python-multipart>=0.0.9,<1
+pywin32>=306; sys_platform == "win32"

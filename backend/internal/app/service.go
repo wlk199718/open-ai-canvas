@@ -27,6 +27,7 @@ import (
 type Service struct {
 	repo                     *repository.Repository
 	dataDir                  string
+	resourceDir              string
 	cancelMu                 sync.Mutex
 	registrationMu           sync.Mutex
 	emailCodeMu              sync.Mutex

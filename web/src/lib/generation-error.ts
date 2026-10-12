@@ -51,6 +51,7 @@ export function generationErrorMessage(error: unknown) {
     if (reason === "model_capability_not_supported") return MODEL_CAPABILITY_ERROR_MESSAGE;
     if (reason === "invalid_argument" && isModelCapabilityFailure(raw)) return MODEL_CAPABILITY_ERROR_MESSAGE;
     if (reason === "invalid_argument" && isModelParameterFailure(raw)) return MODEL_PARAMETER_ERROR_MESSAGE;
+    if (reason === "public_media_url_required") return PUBLIC_MEDIA_URL_REQUIRED_MESSAGE;
     if (reason && REASON_MESSAGES[reason]) return REASON_MESSAGES[reason];
 
     const providerMessage = extractStructuredProviderMessage(raw) || extractWrappedProviderMessage(raw);
@@ -199,8 +200,15 @@ function containsInfrastructureDetails(value: string) {
     return /(?:接口请求失败|Request failed with status code|https?:\/\/|\b(?:GET|POST|PUT|PATCH|DELETE)\s+["']?|Bad Gateway|Service Unavailable|Gateway Timeout|upstream_error)/i.test(value);
 }
 
+// 与后端 publicMediaURLRequiredMessage 保持一致：模型只接受公网素材地址，而素材存在本地存储。
+export const PUBLIC_MEDIA_URL_REQUIRED_MESSAGE = "当前视频模型需要公网可访问的参考素材地址，本地存储的素材无法被模型服务读取。" +
+    "请在「设置 → 我的对象存储」启用阿里云 OSS、腾讯云 COS、七牛云或 S3 兼容存储后，重新上传参考素材再生成；" +
+    "或改用支持直接上传素材的模型。";
+
 function resourceStorageFailureMessage(value: string) {
     if (!value) return "";
+    // 任务失败记录只保留文本，没有 reason，按文案识别；须先于下方「对象存储」通用匹配。
+    if (/需要公网可访问的参考素材地址|public_media_url_required/.test(value)) return PUBLIC_MEDIA_URL_REQUIRED_MESSAGE;
     if (/\bUserDisable\b/i.test(value)) return "对象存储账号已停用，请检查或更换对象存储配置。";
     if (/(?:参考(?:图片|媒体)上传失败|OSS 上传失败|对象存储|腾讯云 COS|七牛云)/i.test(value)) {
         return "参考素材上传到对象存储失败，请检查对象存储配置后重试。";

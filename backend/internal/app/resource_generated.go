@@ -153,7 +153,7 @@ func (s *Service) decodeDataURL(value string) (string, []byte, error) {
 	if int64(len(data)) > megabytes(policy.Resource.GeneratedFileMB) {
 		return "", nil, fmt.Errorf("单个生成资源超过 %dMB", policy.Resource.GeneratedFileMB)
 	}
-	return mimeType, data, nil
+	return normalizedMediaMimeType(mimeType, data), data, nil
 }
 
 func intValue(value interface{}) int {
@@ -206,9 +206,7 @@ func downloadRemoteResource(rawURL string, maxBytes int64) (remoteResourcePayloa
 	if idx := strings.Index(mimeType, ";"); idx >= 0 {
 		mimeType = strings.TrimSpace(mimeType[:idx])
 	}
-	if mimeType == "" || mimeType == "application/octet-stream" {
-		mimeType = http.DetectContentType(data)
-	}
+	mimeType = normalizedMediaMimeType(mimeType, data)
 	fileName := path.Base(parsed.Path)
 	if fileName == "" || fileName == "." || !strings.Contains(fileName, ".") {
 		fileName = "resource." + extensionFromMimeType(mimeType)

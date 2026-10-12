@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CONTENT_MODERATION_MESSAGE, generationErrorMessage, generationFailureMetadata } from "../src/lib/generation-error";
+import { CONTENT_MODERATION_MESSAGE, PUBLIC_MEDIA_URL_REQUIRED_MESSAGE, generationErrorMessage, generationFailureMetadata } from "../src/lib/generation-error";
 
 describe("safe upstream error details", () => {
     const detail = "非常抱歉，生成的图片可能违反了关于裸露、色情或情色内容的防护限制。请重试或修改提示语。";
@@ -17,6 +17,12 @@ describe("safe upstream error details", () => {
         const metadata = generationFailureMetadata(message, "test prompt");
         expect(metadata.errorDetails).toBe(`${CONTENT_MODERATION_MESSAGE}；上游：${detail}`);
         expect(metadata.generationErrorCode).toBe("sensitive_words_detected");
+    });
+    test("public media url guidance survives as text and via reason", () => {
+        const backend = "当前视频模型需要公网可访问的参考素材地址，本地存储的素材无法被模型服务读取。请在「设置 → 我的对象存储」启用…";
+        expect(generationErrorMessage(new Error(backend))).toBe(PUBLIC_MEDIA_URL_REQUIRED_MESSAGE);
+        expect(generationErrorMessage({ reason: "public_media_url_required", message: "x" })).toBe(PUBLIC_MEDIA_URL_REQUIRED_MESSAGE);
+        expect(generationErrorMessage("OSS 上传失败：403")).toBe("参考素材上传到对象存储失败，请检查对象存储配置后重试。");
     });
     test("upstream marker does not bypass URL hiding", () => {
         expect(generationErrorMessage("模型服务请求失败；上游：https://private.test")).toBe("网络异常。");

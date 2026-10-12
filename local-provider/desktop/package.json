@@ -1,0 +1,40 @@
+{
+  "name": "zaowu-provider-desktop",
+  "productName": "造物生成服务",
+  "version": "0.1.4",
+  "private": true,
+  "description": "造物本地图片和视频生成服务",
+  "author": "造物",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "cn.zaowu.provider",
+    "productName": "造物生成服务",
+    "directories": { "output": "release" },
+    "files": ["src/**/*", "build/icon.png", "package.json"],
+    "extraResources": [{ "from": "bundle", "to": "bundle" }, { "from": "../../desktop-shared/storage.cjs", "to": "storage.cjs" }],
+    "asar": true,
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "artifactName": "zaowu-provider-setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "造物生成服务",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh"
+    }
+  }
+}

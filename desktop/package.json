@@ -1,0 +1,37 @@
+{
+  "name": "zaowu-desktop",
+  "productName": "造物",
+  "version": "0.1.1",
+  "private": true,
+  "description": "造物桌面端",
+  "author": "ddcat-ai",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "main": "src/main.js",
+  "scripts": {
+    "prepare-bundle": "node scripts/prepare-bundle.mjs",
+    "start": "electron .",
+    "dist": "node scripts/prepare-bundle.mjs && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "cn.zaowu.desktop",
+    "productName": "造物",
+    "directories": { "output": "release" },
+    "files": ["src/**/*", "build/icon.png", "package.json"],
+    "extraResources": [{ "from": "bundle", "to": "bundle" }, { "from": "../desktop-shared/storage.cjs", "to": "storage.cjs" }],
+    "asar": true,
+    "win": { "target": "nsis", "icon": "build/icon.ico", "artifactName": "zaowu-setup-${version}.${ext}" },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "造物",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

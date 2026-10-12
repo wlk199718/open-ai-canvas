@@ -314,7 +314,7 @@ func probeMediaDurationMs(path string) int64 {
 // explicit recovery instead of silently changing the storage destination.
 func (s *Service) storeTaskMediaObject(resource *model.Resource, _ string, body io.Reader) (string, error) {
 	if resource.Provider == "local" {
-		return "", writeLocalResourceObject(filepath.Join(s.dataDir, "resources", filepath.FromSlash(resource.ObjectKey)), body)
+		return "", writeLocalResourceObject(filepath.Join(s.localResourceRoot(), filepath.FromSlash(resource.ObjectKey)), body)
 	}
 	setting, err := s.ossSettingForResource(resource.UserID, resource)
 	if err != nil {

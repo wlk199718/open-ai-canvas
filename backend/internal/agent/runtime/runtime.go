@@ -84,7 +84,12 @@ func Run(ctx context.Context, request ProcessRequest, bridge Bridge) error {
 	if err != nil {
 		return fmt.Errorf("encode Agent runtime request: %w", err)
 	}
-	cmd := exec.CommandContext(ctx, "node", "--max-old-space-size="+nodeMemoryMB(), filepath.Join(runtimeDir, "agent-runtime.mjs"))
+	// 桌面端可通过 CANVAS_NODE_BIN 指向 Electron 可执行文件（配合 ELECTRON_RUN_AS_NODE=1）。
+	nodeBin := strings.TrimSpace(os.Getenv("CANVAS_NODE_BIN"))
+	if nodeBin == "" {
+		nodeBin = "node"
+	}
+	cmd := exec.CommandContext(ctx, nodeBin, "--max-old-space-size="+nodeMemoryMB(), filepath.Join(runtimeDir, "agent-runtime.mjs"))
 	cmd.Dir = runtimeDir
 	cmd.Stdin = strings.NewReader(string(payload))
 	// 环境变量白名单：只传 Node 运行所需的最少变量。HOME 与会话、工作目录
@@ -93,6 +98,13 @@ func Run(ctx context.Context, request ProcessRequest, bridge Bridge) error {
 		"PATH=" + os.Getenv("PATH"),
 		"NODE_ENV=production",
 		"PI_OFFLINE=1",
+	}
+	if os.Getenv("ELECTRON_RUN_AS_NODE") != "" {
+		cmd.Env = append(cmd.Env, "ELECTRON_RUN_AS_NODE=1")
+	}
+	if systemRoot := os.Getenv("SYSTEMROOT"); systemRoot != "" {
+		// Windows 上 Node 初始化加密/网络需要 SYSTEMROOT。
+		cmd.Env = append(cmd.Env, "SYSTEMROOT="+systemRoot)
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

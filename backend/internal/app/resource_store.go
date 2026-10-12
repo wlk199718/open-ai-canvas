@@ -254,7 +254,7 @@ func (s *Service) openResourceRange(userID string, resource *model.Resource, ran
 		return nil, BadAuthRequest("资源尚未上传完成")
 	}
 	if resource.Provider == "local" {
-		body, err := os.Open(filepath.Join(s.dataDir, "resources", filepath.FromSlash(resource.ObjectKey)))
+		body, err := os.Open(filepath.Join(s.localResourceRoot(), filepath.FromSlash(resource.ObjectKey)))
 		if err != nil {
 			return nil, err
 		}
@@ -396,7 +396,7 @@ func (s *Service) storeResourceObject(resource *model.Resource, fileName string,
 		return "", errors.New("资源不存在")
 	}
 	if resource.Provider == "local" {
-		return "", writeLocalResourceObject(filepath.Join(s.dataDir, "resources", filepath.FromSlash(resource.ObjectKey)), body)
+		return "", writeLocalResourceObject(filepath.Join(s.localResourceRoot(), filepath.FromSlash(resource.ObjectKey)), body)
 	}
 	setting, settingErr := s.ossSettingForResource(resource.UserID, resource)
 	if settingErr != nil {

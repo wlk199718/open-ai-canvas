@@ -9,7 +9,68 @@ import (
 	"testing"
 
 	"yingce/backend/internal/model"
+	"yingce/backend/internal/platform"
 )
+
+func TestFailedImageProviderRecoveryDownloadsExistingTaskWithoutResubmitting(t *testing.T) {
+	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "127.0.0.1")
+	s, db := newMediaRecoveryTestService(t)
+	s.coordinator = platform.NewCoordinatorWithRedis(nil, "image-recovery-test")
+	center, err := newPluginRuntime(s.dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.pluginRuntime = center
+	picture := mediaTestPNG(t)
+	creates, polls, downloads := 0, 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer fixture-token" {
+			t.Error("missing recovery authorization")
+		}
+		switch {
+		case r.Method != http.MethodGet:
+			creates++
+			http.Error(w, "must not generate again", http.StatusConflict)
+		case r.URL.Path == "/api/v1/tasks/existing-image":
+			polls++
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"existing-image","status":"completed","result_ready":true}`))
+		case r.URL.Path == "/api/v1/tasks/existing-image/result":
+			downloads++
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(picture)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	task := seedMediaTask(t, db, providerConfig{
+		BaseURL: server.URL, APIKey: "fixture-token", Model: "nano2 lite",
+		InterfaceType: "zaowu-local-image", APIFormat: "openai",
+	})
+	if err := db.Model(task).Updates(map[string]any{
+		"status": model.TaskStatusFailed, "error": "upstream status was misclassified",
+		"provider_request_id": "existing-image", "lease_owner": "", "lease_expires_at": nil,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.QueryFailedVideoTask(context.Background(), "other-user", task.ID); err == nil {
+		t.Fatal("recovery accepted another user's task")
+	}
+	if polls != 0 || downloads != 0 || creates != 0 {
+		t.Fatal("unauthorized recovery called upstream")
+	}
+	result, err := s.QueryFailedVideoTask(context.Background(), task.UserID, task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Recovered || result.Task.Status != model.TaskStatusSucceeded || result.Task.Error != "" {
+		t.Fatalf("image recovery result = %+v", result)
+	}
+	if creates != 0 || polls != 1 || downloads != 1 || result.Task.ProviderRequestID != "existing-image" {
+		t.Fatalf("recovery calls create=%d poll=%d download=%d task=%+v", creates, polls, downloads, result.Task)
+	}
+}
 
 func TestProviderTaskRecoveryContextSurvivesClientCancellation(t *testing.T) {
 	type contextKey string
