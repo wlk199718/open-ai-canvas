@@ -1,6 +1,6 @@
 import { App, Button, InputNumber } from "antd";
 import { SettingsRow } from "@/components/ui/product/settings-row";
-import { ArrowLeft, Boxes, Brain, Bug, Cloud, FolderOpen, MessageSquareText, PlugZap, RadioTower, SlidersHorizontal, Workflow } from "lucide-react";
+import { ArrowLeft, Boxes, Brain, Bug, Cloud, FolderOpen, MessageSquareText, PlugZap, RadioTower, SlidersHorizontal, UserRound, Workflow } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -19,10 +19,12 @@ import { RUNNINGHUB_PLUGIN_ID } from "@/lib/plugins/builtin/workflows";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { LocalGenerationSettingsPane } from "./local-generation-settings-pane";
 import { FileStorageSettingsPane } from "./file-storage-settings-pane";
+import { ProfilePane } from "./profile-pane";
 
-type ConfigSectionKey = "channels" | "models" | "runninghub" | "local-generation" | "file-storage" | "preferences" | "prompts" | "agent-memory" | "storage" | "diagnostics";
+type ConfigSectionKey = "profile" | "channels" | "models" | "runninghub" | "local-generation" | "file-storage" | "preferences" | "prompts" | "agent-memory" | "storage" | "diagnostics";
 
 const configSections: Array<{ key: ConfigSectionKey; label: string; description: string; icon: ReactNode }> = [
+    { key: "profile", label: "个人信息", description: "头像、密码与邮箱", icon: <UserRound className="size-4" /> },
     { key: "channels", label: "个人渠道", description: "模型服务与个人工作流", icon: <RadioTower className="size-4" /> },
     ...(import.meta.env.VITE_DESKTOP === "1" ? [{ key: "local-generation" as const, label: "本地生成服务", description: "连接本机服务并同步模型", icon: <PlugZap className="size-4" /> }] : []),
     ...(import.meta.env.VITE_DESKTOP === "1" ? [{ key: "file-storage" as const, label: "文件存储", description: "统一图片与视频保存位置", icon: <FolderOpen className="size-4" /> }] : []),
@@ -48,7 +50,7 @@ export default function SettingsPage() {
     const runtimeStatuses = usePluginStore((state) => state.runtimeStatuses);
     const runningHubPluginEnabled = runtimeStatuses[RUNNINGHUB_PLUGIN_ID] === "enabled";
     const requestedSectionEnabled = requestedSection !== "runninghub" || runningHubPluginEnabled;
-    const initialSection = isConfigSection(requestedSection) && requestedSectionEnabled ? requestedSection : customChannelsEnabled ? "channels" : "models";
+    const initialSection = isConfigSection(requestedSection) && requestedSectionEnabled ? requestedSection : "profile";
     const [activeTab, setActiveTab] = useState<ConfigSectionKey>(initialSection === "channels" && !customChannelsEnabled ? "models" : initialSection);
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
@@ -66,7 +68,7 @@ export default function SettingsPage() {
             setActiveTab(requestedSection);
             return;
         }
-        setActiveTab((current) => visibleConfigSections.some((section) => section.key === current) ? current : customChannelsEnabled ? "channels" : "models");
+        setActiveTab(requestedSection === "channels" && !customChannelsEnabled ? "models" : "profile");
     }, [customChannelsEnabled, requestedSection, visibleConfigSections]);
 
     useEffect(() => {
@@ -109,6 +111,7 @@ export default function SettingsPage() {
     };
 
     const panes: Record<ConfigSectionKey, ReactNode> = {
+        profile: <SettingsPane><ProfilePane key={userId} /></SettingsPane>,
         channels: <SettingsPane><ChannelSettingsPane onOpenModels={() => selectSection("models")} onOpenRunningHub={runningHubPluginEnabled ? () => selectSection("runninghub") : undefined} /></SettingsPane>,
         models: (
             <SettingsPane>
