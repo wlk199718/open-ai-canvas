@@ -116,6 +116,7 @@ export type ModelChannel = {
 };
 
 export type AiConfig = {
+    desktopTextPresetsVersion?: number;
     channelMode: "remote";
     baseUrl: string;
     apiKey: string;

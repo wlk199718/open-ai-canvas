@@ -23,12 +23,12 @@ import { useNavigate } from "react-router";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { ASSET_CATEGORY_OPTIONS } from "@/lib/asset-category";
-import { downloadBrowserMedia } from "@/services/browser-download";
+import { openOrDownloadMedia } from "@/services/desktop-media";
 import { flushAssetStorePersistence, useAssetStore, type AssetCategory, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
 import { loadAssetLibraryPage, loadAssetsForUse, saveRemoteUserDataNow, localSavedRemotePendingMessage, deleteAssetsWithRemoteSync, deleteAssetWithRemoteSync } from "@/services/user-data-sync";
 import { useUserStore } from "@/stores/use-user-store";
 import { createAssetFolder, deleteAssetFolder, listAssetFolders, updateAssetFolder, type AssetFolder, moveRemoteAssetsToFolder } from "@/services/api/user-data";
-import { assetCountMap, assetSearchText, readAssetGridDensity, assetKindIcons } from "./asset-library-format";
+import { assetCountMap, assetSearchText, readAssetGridDensity, assetKindIcons, assetMediaFile } from "./asset-library-format";
 import { ASSET_GRID_DENSITY_KEY, type LibraryAsset } from "./asset-library-format";
 
 export { ASSET_GRID_DENSITY_KEY, type LibraryAsset, assetKindIcons } from "./asset-library-format";
@@ -408,10 +408,8 @@ export default function AssetsPage() {
 
     const downloadImage = async (asset: LibraryAsset) => {
         if (asset.kind !== "image" && asset.kind !== "video" && asset.kind !== "audio" && asset.kind !== "model") return;
-        const url = asset.kind === "image" ? asset.data.dataUrl : asset.data.url;
-        const extension = asset.kind === "model" ? asset.data.fileName.split(".").pop() || "glb" : asset.data.mimeType.split("/")[1] || "png";
         try {
-            await downloadBrowserMedia({ storageKey: asset.data.storageKey, url, fileName: `${asset.title || "asset"}.${extension}` });
+            await openOrDownloadMedia(assetMediaFile(asset));
         } catch (error) {
             message.error(error instanceof Error ? error.message : "下载失败");
         }
@@ -926,7 +924,7 @@ export default function AssetsPage() {
                 />
             </Modal>
 
-            <AssetDrawer asset={previewAsset} onClose={() => setPreviewAsset(null)} onCopy={copyAssetText} onDownload={downloadImage} />
+            <AssetDrawer asset={previewAsset} onClose={() => setPreviewAsset(null)} onCopy={copyAssetText} />
 
             <AssetBatchUploadModal open={batchUploadOpen} defaultFolderId={folderFilter !== "all" && folderFilter !== "uncategorized" ? folderFilter : ""} folders={folders} onClose={() => setBatchUploadOpen(false)} onComplete={async () => { setBatchUploadOpen(false); await invalidateAssetLibrary(); }} />
 

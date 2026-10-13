@@ -2,14 +2,16 @@
 //
 // 纯展示组件，数据与操作回调由素材库页面传入。
 
-import { Dropdown, type MenuProps } from "antd";
+import { App, Dropdown, type MenuProps } from "antd";
 import { AlertTriangle, AudioLines, Box, Copy, Download, FileText, FolderOpen, MoreHorizontal, PencilLine, Play, RotateCcw, Trash2 } from "lucide-react";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
+import { useDesktopMedia } from "@/hooks/use-desktop-media";
+import { saveMediaAs } from "@/services/desktop-media";
 import { type AssetKind } from "@/stores/use-asset-store";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
 import { AudioPlayButton, CharacterAssetCover } from "@/components/assets/asset-rich-cover";
 import { assetCategoryLabel } from "@/lib/asset-category";
-import { type LibraryAsset, assetKindIcons } from "./asset-library-format";
+import { type LibraryAsset, assetKindIcons, assetMediaFile } from "./asset-library-format";
 import { assetKindLabel, assetProjectLabel, assetSummary, formatAssetClock, formatAssetTime } from "./asset-library-format";
 
 export function formatExpirationHint(updatedAt: string, retentionDays: number) {
@@ -64,12 +66,22 @@ export function AssetCard({
     onMoveToFolder: (folderId: string) => void;
 }) {
     const summary = assetSummary(asset);
+    const { message } = App.useApp();
+    const media = assetMediaFile(asset);
+    const mediaFile = useDesktopMedia(media.storageKey, media.url, !isTrash);
+    const saveAs = async () => {
+        try { const result = await saveMediaAs(media); if (result.saved) message.success("已另存为"); }
+        catch (error) { message.error(error instanceof Error ? error.message : "另存为失败"); }
+    };
     const menuItems: MenuProps["items"] = isTrash
         ? [{ key: "restore", icon: <RotateCcw className="size-3.5" />, label: "还原到素材库", onClick: onRestore }, { type: "divider" as const }, { key: "delete", danger: true, icon: <Trash2 className="size-3.5" />, label: "彻底删除", onClick: onDelete }]
         : [
               ...(asset.kind === "text" || asset.kind === "image" ? [{ key: "edit", icon: <PencilLine className="size-3.5" />, label: "编辑", onClick: onEdit }] : []),
               ...(asset.kind === "text" ? [{ key: "copy", icon: <Copy className="size-3.5" />, label: "复制文本", onClick: () => void onCopy(asset) }] : []),
-              ...(asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? [{ key: "download", icon: <Download className="size-3.5" />, label: "下载", onClick: () => onDownload(asset) }] : []),
+              ...(asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? [
+                  { key: "download", icon: mediaFile.local ? <FolderOpen className="size-3.5" /> : <Download className="size-3.5" />, label: mediaFile.label, disabled: mediaFile.checking || mediaFile.unavailable, onClick: () => onDownload(asset) },
+                  ...(mediaFile.local ? [{ key: "save-as", label: "另存为", onClick: () => void saveAs() }] : []),
+              ] : []),
               { key: "move", icon: <FolderOpen className="size-3.5" />, label: "移动到分类", children: folderOptions.map((folder) => ({ key: folder.value || "uncategorized", label: folder.label, onClick: () => onMoveToFolder(folder.value) })) },
               { type: "divider" as const },
               { key: "archive", icon: <Trash2 className="size-3.5 text-amber-500" />, label: "移入回收站", onClick: onArchive },

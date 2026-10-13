@@ -7,7 +7,7 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { EmptyState } from "@/components/ui/product/empty-state";
 import { StatusBadge } from "@/components/ui/base/badges";
 import { AppModal } from "@/components/ui/product/app-modal/app-modal";
-import { Box, ChevronDown, ChevronLeft, ChevronRight, Download, Film, Image as ImageIcon, Layers3, List, Maximize2, Play, Plus, RefreshCcw, Save, Search, SlidersHorizontal, Trash2, UsersRound, WandSparkles, X } from "lucide-react";
+import { Box, ChevronDown, ChevronLeft, ChevronRight, Film, Image as ImageIcon, Layers3, List, Maximize2, Play, Plus, RefreshCcw, Save, Search, SlidersHorizontal, Trash2, UsersRound, WandSparkles, X } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
@@ -23,7 +23,7 @@ import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 import { submitBackendGenerationTask } from "@/services/api/generation-task";
 import { quoteModel, type LogicalModelQuote } from "@/services/api/logical-models";
 import { type GenerationTask } from "@/services/api/task-center";
-import { downloadBrowserMedia } from "@/services/browser-download";
+import { MediaFileActions } from "@/components/media-file-actions";
 import {
     createUnitWorkflow,
     deleteProjectShot,
@@ -573,7 +573,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
                     <div className="workflow-preview-scroll thin-scrollbar">
                         {previewTab === "latest" ? <LatestPreview artifact={previewArtifact} emptyText={stageCopy.empty} onPreviewImage={setImagePreviewArtifact} /> : <ArtifactHistory artifacts={artifacts} activeId={previewArtifact?.id} onSelect={(artifact) => { setPreviewArtifactId(artifact.id); setPreviewTab("latest"); }} />}
                         <div className="workflow-preview-summary"><div className="flex items-center justify-between gap-2"><span className="text-xs font-medium">当前产物</span><ArtifactStatus artifact={newestArtifact} compact /></div><div className="mt-1 text-[var(--fs-micro)] text-foreground/45">{newestArtifact ? `${formatDuration(selectedShot.durationMs)} · ${resolution}p · v${newestArtifact.version}` : "当前镜头还没有生成产物"}</div></div>
-                        <div className="workflow-preview-actions"><Button icon={<RefreshCcw className="size-3.5" />} loading={selectedShotSubmitting || shotTask?.status === "queued" || shotTask?.status === "running"} onClick={() => void generateArtifact()}>重新生成</Button><Button icon={<Download className="size-3.5" />} disabled={!previewArtifact?.resourceId} onClick={() => previewArtifact?.resourceId && void downloadArtifact(previewArtifact, selectedShot.title, message.error)}>下载{activeStage === "video" ? "视频" : "图片"}</Button></div>
+                        <div className="workflow-preview-actions"><Button icon={<RefreshCcw className="size-3.5" />} loading={selectedShotSubmitting || shotTask?.status === "queued" || shotTask?.status === "running"} onClick={() => void generateArtifact()}>重新生成</Button><MediaFileActions disabled={!previewArtifact?.resourceId} media={{ storageKey: previewArtifact?.resourceId ? resourceStorageKey(previewArtifact.resourceId) : undefined, fileName: `${selectedShot.title || "shot"}-v${previewArtifact?.version || 1}.${activeStage === "video" ? "mp4" : "png"}` }} /></div>
                         <ArtifactHistory artifacts={artifacts.slice(0, 4)} activeId={previewArtifact?.id} onSelect={(artifact) => setPreviewArtifactId(artifact.id)} compact />
                     </div>
                 </aside>
@@ -755,18 +755,6 @@ function revisionInput(values: ShotEditorValues): ShotRevisionInput {
         negativePrompt: values.negativePrompt,
         continuityNotes: values.continuityNotes,
     };
-}
-
-async function downloadArtifact(artifact: ShotArtifact, shotTitle: string, onError: (content: string) => void) {
-    if (!artifact.resourceId) return;
-    try {
-        await downloadBrowserMedia({
-            storageKey: resourceStorageKey(artifact.resourceId),
-            fileName: `${shotTitle || "shot"}-v${artifact.version}.${artifact.type === "video" ? "mp4" : "png"}`,
-        });
-    } catch (error) {
-        onError(error instanceof Error ? `下载失败：${error.message}` : "下载失败");
-    }
 }
 
 function assetPreviewUrl(asset: ProjectAsset) {

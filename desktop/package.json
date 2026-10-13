@@ -1,7 +1,7 @@
 {
   "name": "zaowu-desktop",
   "productName": "造物",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "private": true,
   "description": "造物桌面端",
   "author": "ddcat-ai",
@@ -21,7 +21,7 @@
     "productName": "造物",
     "directories": { "output": "release" },
     "files": ["src/**/*", "build/icon.png", "package.json"],
-    "extraResources": [{ "from": "bundle", "to": "bundle" }, { "from": "../desktop-shared/storage.cjs", "to": "storage.cjs" }],
+    "extraResources": [{ "from": "bundle", "to": "bundle" }, { "from": "../desktop-shared/storage.cjs", "to": "storage.cjs" }, { "from": "../desktop-shared/local-media.cjs", "to": "local-media.cjs" }],
     "asar": true,
     "win": { "target": "nsis", "icon": "build/icon.ico", "artifactName": "zaowu-setup-${version}.${ext}" },
     "nsis": {
@@ -31,7 +31,8 @@
       "shortcutName": "造物",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh"
     }
   }
 }

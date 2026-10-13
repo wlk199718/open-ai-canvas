@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Dropdown, Form, Input, Modal, Popconfirm, Tabs, type FormInstance } from "antd";
-import { Box, Check, ChevronDown, Download, FileText, FolderOpen, FolderPlus, Image as ImageIcon, Link2, MoreHorizontal, MoveRight, Music2, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2, Upload, UserRound, Video, VolumeX } from "lucide-react";
+import { Box, Check, ChevronDown, FileText, FolderOpen, FolderPlus, Image as ImageIcon, Link2, MoreHorizontal, MoveRight, Music2, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2, Upload, UserRound, Video, VolumeX } from "lucide-react";
 
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { PaginationBar } from "@/components/layout/workspace-page";
@@ -17,7 +17,7 @@ import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-pick
 import { CHARACTER_VOICE_FORMAT_LABEL, CHARACTER_VOICE_UPLOAD_ACCEPT, characterVoiceFormatName, characterVoiceTitleFromFileName, isSupportedCharacterVoiceFile } from "@/lib/character-voice-formats";
 import { ASSET_CATEGORIES, defaultAssetCategoryForKind, normalizeAssetCategory } from "@/lib/asset-category";
 import { resourceFileUrl, resourceIdFromStorageKey, resourceStorageKey } from "@/services/api/resources";
-import { downloadBrowserMedia } from "@/services/browser-download";
+import { MediaFileActions } from "@/components/media-file-actions";
 import { uploadMediaFile } from "@/services/file-storage";
 import {
     bindProjectCharacterVoice,
@@ -372,30 +372,6 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
         if (folderEditor?.folder) renameFolderMutation.mutate({ id: folderEditor.folder.id, name });
         else if (folderEditor) createFolderMutation.mutate({ name, parentId: folderEditor.parentId });
     };
-    const downloadPreviewAsset = async (asset: ProjectAsset) => {
-        try {
-            const personal = personalAssets.find((item) => item.id === asset.id);
-            if (personal && (personal.kind === "image" || personal.kind === "video" || personal.kind === "audio" || personal.kind === "model")) {
-                const url = personal.kind === "image" ? personal.data.dataUrl : personal.data.url;
-                const extension = personal.kind === "model" ? personal.data.fileName.split(".").pop() || "glb" : personal.data.mimeType.split("/")[1] || "bin";
-                await downloadBrowserMedia({ storageKey: personal.data.storageKey, url, fileName: `${asset.title || "asset"}.${extension}` });
-                return;
-            }
-            const cover = projectCharacterCover(asset.character?.representations);
-            if (cover) {
-                await downloadBrowserMedia({ storageKey: resourceStorageKey(cover.resourceId), fileName: `${asset.title || "character"}.png` });
-                return;
-            }
-            const remoteUrl = projectAssetRemoteUrl(asset);
-            if (!remoteUrl) {
-                message.warning("当前资产没有可下载的媒体文件");
-                return;
-            }
-            await downloadBrowserMedia({ storageKey: asset.storageKey, url: remoteUrl, fileName: `${asset.title || "asset"}.${projectAssetFileExtension(asset.mediaType)}` });
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : "下载失败");
-        }
-    };
     return (
         <div>
             <header className="flex min-h-[72px] flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -490,7 +466,7 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                     await addMutation.mutateAsync({ ids, nextFolderId: folderId === ALL_FOLDERS ? undefined : folderId });
                 }}
             />
-            <ProjectAssetPreviewModal asset={previewAsset} personalAsset={previewAsset ? personalAssets.find((item) => item.id === previewAsset.id) : undefined} onClose={() => setPreviewAsset(null)} onDownload={() => previewAsset && downloadPreviewAsset(previewAsset)} onReplaceImage={() => { if (!previewAsset || previewAsset.category !== "character") return; setPreviewAsset(null); openImages(previewAsset); }} />
+            <ProjectAssetPreviewModal asset={previewAsset} personalAsset={previewAsset ? personalAssets.find((item) => item.id === previewAsset.id) : undefined} onClose={() => setPreviewAsset(null)} onReplaceImage={() => { if (!previewAsset || previewAsset.category !== "character") return; setPreviewAsset(null); openImages(previewAsset); }} />
             <CharacterEditorModal open={Boolean(editorAsset)} editing={editorAsset !== "new"} form={form} loading={saveCharacter.isPending} onClose={() => setEditorAsset(null)} onSave={() => form.validateFields().then((values) => saveCharacter.mutate(values))} />
             <Modal className="workspace-modal workspace-modal-compact" title={folderEditor?.folder ? "重命名文件夹" : "新建文件夹"} open={Boolean(folderEditor)} okText={folderEditor?.folder ? "保存" : "创建"} cancelText="取消" okButtonProps={{ loading: createFolderMutation.isPending || renameFolderMutation.isPending }} onCancel={() => { setFolderEditor(null); setFolderName(""); }} onOk={saveFolder}>
                 <div className="grid gap-2"><span className="text-[var(--fs-label)] text-foreground/48">位置：{folderEditor ? projectAssetFolderParentLabel(assetFolders, folderEditor.parentId) : ""}</span><Input autoFocus maxLength={60} value={folderName} placeholder="输入文件夹名称" onChange={(event) => setFolderName(event.target.value)} onPressEnter={saveFolder} /></div>
@@ -712,14 +688,17 @@ function ProjectAssetMedia({ asset, personalAsset }: { asset: ProjectAsset; pers
     return <div className="grid h-full place-items-center text-foreground/25"><MediaIcon kind={asset.mediaType} /></div>;
 }
 
-function ProjectAssetPreviewModal({ asset, personalAsset, onClose, onDownload, onReplaceImage }: { asset: ProjectAsset | null; personalAsset?: Asset; onClose: () => void; onDownload: () => void; onReplaceImage: () => void }) {
+function ProjectAssetPreviewModal({ asset, personalAsset, onClose, onReplaceImage }: { asset: ProjectAsset | null; personalAsset?: Asset; onClose: () => void; onReplaceImage: () => void }) {
     const characterCover = projectCharacterCover(asset?.character?.representations);
     const remoteUrl = asset ? projectAssetRemoteUrl(asset) : "";
     const canDownload = Boolean(personalAsset && ["image", "video", "audio", "model"].includes(personalAsset.kind)) || Boolean(characterCover) || Boolean(remoteUrl);
+    const media = personalAsset && (personalAsset.kind === "image" || personalAsset.kind === "video" || personalAsset.kind === "audio" || personalAsset.kind === "model")
+        ? { storageKey: personalAsset.data.storageKey, url: personalAsset.kind === "image" ? personalAsset.data.dataUrl : personalAsset.data.url, fileName: `${asset?.title || "asset"}.${personalAsset.kind === "model" ? personalAsset.data.fileName.split(".").pop() || "glb" : personalAsset.data.mimeType.split("/")[1] || "bin"}` }
+        : { storageKey: characterCover?.resourceId ? resourceStorageKey(characterCover.resourceId) : asset?.storageKey, url: remoteUrl, fileName: `${asset?.title || "asset"}.${characterCover ? "png" : projectAssetFileExtension(asset?.mediaType || "image")}` };
     const previewKind = personalAsset?.kind || asset?.mediaType;
     const previewClass = asset?.category === "character" ? "is-character" : previewKind === "video" ? "is-video" : previewKind === "audio" ? "is-audio" : previewKind === "text" ? "is-text" : "is-image";
     return (
-        <Modal className="workspace-modal workspace-modal-wide library-modal project-asset-preview-modal" title={asset?.category === "character" ? "角色卡预览" : "资产预览"} open={Boolean(asset)} onCancel={onClose} footer={<div className="flex justify-end gap-2"><Button onClick={onClose}>关闭</Button>{asset?.category === "character" ? <Button onClick={onReplaceImage}>替换图片</Button> : null}{canDownload ? <Button type="primary" icon={<Download className="size-3.5" />} onClick={onDownload}>下载</Button> : null}</div>}>
+        <Modal className="workspace-modal workspace-modal-wide library-modal project-asset-preview-modal" title={asset?.category === "character" ? "角色卡预览" : "资产预览"} open={Boolean(asset)} onCancel={onClose} footer={<div className="flex justify-end gap-2"><Button onClick={onClose}>关闭</Button>{asset?.category === "character" ? <Button onClick={onReplaceImage}>替换图片</Button> : null}{canDownload ? <MediaFileActions media={media} primary /> : null}</div>}>
             {asset ? <div className="project-asset-preview-layout">
                 <div className={`project-asset-preview-stage ${previewClass}`}>
                     {asset.category === "character" ? characterCover ? <CachedResourceImage storageKey={`resource:${characterCover.resourceId}`} src={resourceFileUrl(characterCover.resourceId)} alt={asset.title} className="project-asset-preview-media" fallback={<div className="grid min-h-48 place-items-center text-foreground/35"><UserRound className="size-12" /></div>} /> : <div className="grid min-h-48 place-items-center text-foreground/35"><UserRound className="size-12" /></div> : personalAsset?.kind === "video" ? <video src={personalAsset.data.url} controls className="project-asset-preview-media" /> : personalAsset?.kind === "audio" ? <audio src={personalAsset.data.url} controls className="project-asset-preview-audio" /> : personalAsset?.kind === "image" ? <AssetMediaPreview asset={personalAsset} alt={asset.title} className="project-asset-preview-media" /> : personalAsset?.kind === "text" ? <p className="project-asset-preview-text">{personalAsset.data.content}</p> : asset.mediaType === "video" && remoteUrl ? <video src={remoteUrl} controls className="project-asset-preview-media" /> : asset.mediaType === "audio" && remoteUrl ? <audio src={remoteUrl} controls className="project-asset-preview-audio" /> : asset.mediaType === "image" && remoteUrl ? <img src={remoteUrl} alt={asset.title} className="project-asset-preview-media" /> : asset.mediaType === "text" && asset.previewText ? <p className="project-asset-preview-text">{asset.previewText}</p> : <div className="grid min-h-48 place-items-center text-foreground/35"><MediaIcon kind={asset.mediaType} /></div>}

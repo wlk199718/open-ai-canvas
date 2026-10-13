@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, RefreshCw, ScanSearch, Settings2, Star, Trash2, Type, UserRound, Video, WandSparkles } from "lucide-react";
+import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, FolderOpen, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, RefreshCw, Save, ScanSearch, Settings2, Star, Trash2, Type, UserRound, Video, WandSparkles } from "lucide-react";
 
 import { useCanvasNodeActions } from "./canvas-node-action-context";
+import { useDesktopMedia } from "@/hooks/use-desktop-media";
 import { CanvasImageLayerControls } from "./canvas-image-layer-controls";
 
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -120,7 +121,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title);
-    const { download: downloadNode, duplicate: duplicateNode, deleteNode } = useCanvasNodeActions();
+    const { download: downloadNode, saveAs: saveNodeAs, duplicate: duplicateNode, deleteNode } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
     const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content || data.metadata?.storageKey);
@@ -131,6 +132,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const showProducedModel = showImageInfo && hasMediaContent && Boolean(producedModelStored);
     const isBatchRoot = data.type === CanvasNodeType.Image && Boolean(data.metadata?.isBatchRoot) && (batchCount > 1 || Boolean(data.metadata?.imageLayerGroup));
     const isBatchChild = data.type === CanvasNodeType.Image && Boolean(data.metadata?.batchRootId);
+    const mediaFile = useDesktopMedia(data.metadata?.storageKey, data.metadata?.content, !readOnly && (isBatchRoot || isBatchChild) && (hovered || isSelected || isBatchRoot));
     const showStatusTrack = Boolean(resourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || (hasMediaContent && !readOnly));
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
     const effectiveRenderLOD: CanvasNodeRenderLOD = renderLOD === "full" || hovered || isEditingContent || isEditingTitle || mediaActive ? "full" : renderLOD;
@@ -358,7 +360,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onPointerDown={(event) => event.stopPropagation()}
                     >
                         <div className="flex items-center gap-0.5 rounded-[var(--r-md)] border px-1 py-1 backdrop-blur-xl" style={{ background: `${theme.toolbar.panel}e6`, borderColor: theme.toolbar.border }}>
-                            {hasImageContent ? <BatchChildActionButton theme={theme} label="下载图片" icon={<Download className="size-3.5" />} onClick={() => downloadNode?.(data)} /> : null}
+                            {hasImageContent ? <BatchChildActionButton theme={theme} label={mediaFile.label} disabled={mediaFile.checking || mediaFile.unavailable} icon={mediaFile.local ? <FolderOpen className="size-3.5" /> : <Download className="size-3.5" />} onClick={() => downloadNode?.(data)} /> : null}
+                            {hasImageContent && mediaFile.local ? <BatchChildActionButton theme={theme} label="另存为" icon={<Save className="size-3.5" />} onClick={() => saveNodeAs?.(data)} /> : null}
                             {hasImageContent ? <BatchChildActionButton theme={theme} label="创建副本" icon={<Copy className="size-3.5" />} onClick={() => duplicateNode?.(data)} /> : null}
                             {hasImageContent && !data.metadata?.imageLayer && !data.metadata?.layerExtraction ? (
                                 <BatchChildActionButton theme={theme} label={batchPrimary ? "当前主图" : "设为主图"} icon={<Star className={`size-3.5 ${batchPrimary ? "fill-current" : ""}`} style={{ color: theme.accent.primary }} />} onClick={() => onSetBatchPrimary?.(data)} />
@@ -372,7 +375,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                 {/* 批次主图位（折叠根节点封面）常驻下载按钮 */}
                 {showChrome && isBatchRoot && hasImageContent && !readOnly && (!data.metadata?.imageLayerGroup?.compositeStatus || data.metadata.imageLayerGroup.compositeStatus === "ready") ? (
                     <div className="absolute bottom-2 right-2 z-[var(--node-z-overlay)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                        <BatchChildActionButton theme={theme} label={data.metadata?.imageLayerGroup ? "下载合成图" : "下载主图"} icon={<Download className="size-3.5" />} onClick={() => downloadNode?.(data)} />
+                        <BatchChildActionButton theme={theme} label={mediaFile.label} disabled={mediaFile.checking || mediaFile.unavailable} icon={mediaFile.local ? <FolderOpen className="size-3.5" /> : <Download className="size-3.5" />} onClick={() => downloadNode?.(data)} />
+                        {mediaFile.local ? <BatchChildActionButton theme={theme} label="另存为" icon={<Save className="size-3.5" />} onClick={() => saveNodeAs?.(data)} /> : null}
                     </div>
                 ) : null}
                 {showChrome && (assetTags.length || showProducedModel || (showImageInfo && hasImageContent)) ? (
@@ -493,12 +497,13 @@ function BatchPrimaryBadge({ visible, selected, theme, onSelect }: { visible: bo
     );
 }
 
-function BatchChildActionButton({ theme, label, icon, onClick, danger = false }: { theme: CanvasTheme; label: string; icon: ReactNode; onClick: () => void; danger?: boolean }) {
+function BatchChildActionButton({ theme, label, icon, onClick, danger = false, disabled = false }: { theme: CanvasTheme; label: string; icon: ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }) {
     return (
         <button
             type="button"
             data-canvas-no-zoom
             className="canvas-node-inline-action grid size-8 place-items-center rounded-[var(--r-sm)] p-0 backdrop-blur-xl transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            disabled={disabled}
             style={{ color: danger ? theme.accent.danger : theme.node.text, outlineColor: theme.accent.primary }}
             title={label}
             aria-label={label}

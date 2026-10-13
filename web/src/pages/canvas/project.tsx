@@ -1235,6 +1235,7 @@ function CanvasViewportPage() {
     const {
         collapsingBatchIds,
         downloadNodeImage,
+        saveNodeMediaAs,
         handleConfigNodeChange,
         handleFolderStyleChange,
         handleFolderThemeChange,
@@ -1563,6 +1564,7 @@ function CanvasViewportPage() {
         () => ({
             upload: replaceCanvasNodeMedia,
             download: downloadNodeImage,
+            saveAs: saveNodeMediaAs,
             duplicate: duplicateNodeFromContent,
             deleteNode: deleteNodeFromContent,
             updateMetadata: updateNodeMetadataFromContent,
@@ -1572,7 +1574,7 @@ function CanvasViewportPage() {
             addPanoramaCaptureNode,
             extractLayerMaterials,
         }),
-        [addPanoramaCaptureNode, deleteNodeFromContent, downloadNodeImage, duplicateNodeFromContent, extractLayerMaterials, openArtCritique, replaceCanvasNodeMedia, updateMediaNodeFromContent, updateNodeFromContent, updateNodeMetadataFromContent],
+        [addPanoramaCaptureNode, deleteNodeFromContent, downloadNodeImage, saveNodeMediaAs, duplicateNodeFromContent, extractLayerMaterials, openArtCritique, replaceCanvasNodeMedia, updateMediaNodeFromContent, updateNodeFromContent, updateNodeMetadataFromContent],
     );
     const { dismissLastAgentChange, lastAgentChange, undoAgentOps, viewLastAgentChange } = useCanvasOperationHistory({
         projectId,
@@ -3031,6 +3033,7 @@ function CanvasViewportPage() {
                                 onGenerateImage={generateImageFromTextNode}
                                 onUpload={(node) => handleUploadRequest(node.id)}
                                 onDownload={downloadNodeImage}
+                                onSaveAs={saveNodeMediaAs}
                                 onSaveAsset={(node) => void saveNodeAsset(node)}
                                 onAnnotate={(node) => setAnnotationNodeId(node.id)}
                                 onAnnotationEdit={openAnnotationEditNode}

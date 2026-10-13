@@ -12,6 +12,9 @@ interface Window {
         chooseFileStorage: () => Promise<import("./services/desktop-file-storage").FileStorageSettings>;
         openFileStorage: (kind: "root" | "results" | "resources") => Promise<boolean>;
         restartForFileStorage: () => Promise<boolean>;
+        inspectMedia: (id: string) => Promise<{ local: boolean }>;
+        revealMedia: (id: string) => Promise<boolean>;
+        saveMediaAs: (id: string, name: string) => Promise<{ saved: boolean }>;
     };
 }
 

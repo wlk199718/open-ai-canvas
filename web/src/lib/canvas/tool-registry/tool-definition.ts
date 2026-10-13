@@ -82,6 +82,7 @@ export type ToolbarHandlers = {
     onNodeGenerateImage: (node: CanvasNodeData) => void;
     onNodeUpload: (node: CanvasNodeData) => void;
     onNodeDownload: (node: CanvasNodeData) => void;
+    onNodeSaveAs?: (node: CanvasNodeData) => void;
     onNodeSaveAsset: (node: CanvasNodeData) => void;
     onNodeMaskEdit: (node: CanvasNodeData) => void;
     onNodeImageEdit: (node: CanvasNodeData) => void;
@@ -119,6 +120,9 @@ export type ToolContext = {
     node?: CanvasNodeData;
     /** 便捷访问 node.metadata（node 为空时为 undefined） */
     nodeMetadata?: CanvasNodeMetadata;
+    localMedia?: boolean;
+    mediaFileLabel?: string;
+    mediaFileDisabled?: boolean;
     /** 视频画面提取中（节点悬停工具栏用） */
     extractingVideoFrames: boolean;
     /** 视频音频提取/片段截取进行中（节点悬停工具栏用） */

@@ -1,6 +1,7 @@
 // 素材库的批量操作条、空态、筛选组、详情抽屉与图片放大。
 
 import { Button, Drawer, Tag } from "antd";
+import { MediaFileActions } from "@/components/media-file-actions";
 import { Box, CheckCheck, Clapperboard, Copy, Download, FileText, FileUp, Link2, Maximize2, Mic, Plus, RotateCcw, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { AudioPlayButton, CharacterAssetCover } from "@/components/assets/asset-rich-cover";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
@@ -10,7 +11,7 @@ import { useRef, useState } from "react";
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
 import { type LibraryAsset, assetKindIcons } from "./asset-library-format";
 import { isKnownAssetKind } from "./asset-library-cards";
-import { assetDownloadLabel, assetKindLabel, assetProjectLabel, assetSizeLabel, formatAssetClock, formatAssetDateTime } from "./asset-library-format";
+import { assetMediaFile, assetKindLabel, assetProjectLabel, assetSizeLabel, formatAssetClock, formatAssetDateTime } from "./asset-library-format";
 
 export function AssetsBatchBar({
     count,
@@ -222,7 +223,7 @@ function CharacterArchive({ asset }: { asset: Extract<LibraryAsset, { kind: "ent
     );
 }
 
-export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: LibraryAsset | null; onClose: () => void; onCopy: (asset: LibraryAsset) => void; onDownload: (asset: LibraryAsset) => void }) {
+export function AssetDrawer({ asset, onClose, onCopy }: { asset: LibraryAsset | null; onClose: () => void; onCopy: (asset: LibraryAsset) => void }) {
     const facts = asset ? assetArchiveFacts(asset) : [];
     const kind = asset && isKnownAssetKind(asset.kind) ? asset.kind : undefined;
     const KindIcon = asset ? (kind ? assetKindIcons[kind] : FileText) : Clapperboard;
@@ -306,9 +307,7 @@ export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Lib
                             </Button>
                         ) : null}
                         {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? (
-                            <Button type="primary" icon={<Download className="size-4" />} onClick={() => onDownload(asset)}>
-                                {assetDownloadLabel(asset)}
-                            </Button>
+                            <MediaFileActions media={assetMediaFile(asset)} primary />
                         ) : null}
                     </div>
                 </div>

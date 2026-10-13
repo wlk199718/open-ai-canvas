@@ -9,6 +9,7 @@ import { refreshSystemChannels } from "@/lib/user-session";
 import { defaultConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { ChannelSettingsPane, channelValidationError, focusInvalidChannelField, isChannelReady } from "./channel-settings-pane";
+import { isPendingDesktopTextPreset } from "@/lib/desktop-text-presets";
 import { ModelDefaultGrid } from "./model-default-grid";
 import { PromptPreferencesPane } from "./prompt-preferences-pane";
 import DiagnosticsPanel from "./diagnostics-panel";
@@ -88,7 +89,9 @@ export default function SettingsPage() {
     };
 
     const finishConfig = () => {
-        const invalidChannel = customChannelsEnabled ? userChannels.find((channel) => channelValidationError(channel)) : undefined;
+        const invalidChannel = customChannelsEnabled ? userChannels.find((channel) =>
+            !(import.meta.env.VITE_DESKTOP === "1" && isPendingDesktopTextPreset(channel)) && channelValidationError(channel),
+        ) : undefined;
         if (invalidChannel) {
             selectSection("channels");
             message.warning(`${invalidChannel.name || "未命名渠道"}：${channelValidationError(invalidChannel)}`);

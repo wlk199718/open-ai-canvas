@@ -1,4 +1,4 @@
-import { AudioLines, Captions, Clapperboard, Download, FolderPlus, Images, Image as ImageIcon, Info, LoaderCircle, Lock, Maximize2, MessageSquare, Minus, Music2, Plus, RefreshCw, Scissors, Settings2, Trash2, Unlock, Upload, UserRound, Video, WandSparkles } from "lucide-react";
+import { AudioLines, Captions, Clapperboard, Download, FolderOpen, FolderPlus, Images, Image as ImageIcon, Info, LoaderCircle, Lock, Maximize2, MessageSquare, Minus, Music2, Plus, RefreshCw, Save, Scissors, Settings2, Trash2, Unlock, Upload, UserRound, Video, WandSparkles } from "lucide-react";
 
 import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
 import { registerToolbarTools, type ToolContext, type ToolDefinition } from "@/lib/canvas/tool-registry";
@@ -133,14 +133,27 @@ export const nodeHoverToolbarTools: ToolDefinition[] = [
         id: "download",
         toolbar: "node-hover",
         category: "node-state",
-        label: (ctx) => hasAudio(ctx) ? "下载音频" : hasVideo(ctx) ? "下载视频" : "下载图片",
-        displayLabel: "下载",
-        icon: <Download className="size-3.5" />,
+        label: (ctx) => ctx.mediaFileLabel || (hasAudio(ctx) ? "下载音频" : hasVideo(ctx) ? "下载视频" : "下载图片"),
+        displayLabel: (ctx) => ctx.mediaFileLabel || "下载",
+        icon: (ctx) => ctx.localMedia ? <FolderOpen className="size-3.5" /> : <Download className="size-3.5" />,
         defaultVisible: true,
         defaultOrder: 60,
         nodeToolbar: { group: "utility", order: 20 },
         applicable: (ctx) => hasImage(ctx) || hasVideo(ctx) || hasAudio(ctx),
+        disabled: (ctx) => Boolean(ctx.mediaFileDisabled),
         run: (ctx) => ctx.handlers.onNodeDownload(ctx.node!),
+    },
+    {
+        id: "saveMediaAs",
+        toolbar: "node-hover",
+        category: "node-state",
+        label: "另存为",
+        icon: <Save className="size-3.5" />,
+        defaultVisible: true,
+        defaultOrder: 61,
+        nodeToolbar: { group: "utility", order: 21 },
+        applicable: (ctx) => Boolean(ctx.localMedia && ctx.handlers.onNodeSaveAs),
+        run: (ctx) => ctx.handlers.onNodeSaveAs?.(ctx.node!),
     },
     {
         id: "edit",

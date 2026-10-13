@@ -489,9 +489,18 @@ function App() {
     </div>
   );
 
-  async function downloadResult(taskId: string) {
+  async function downloadResult(taskId: string, saveAs = false) {
     setBusy(`download-${taskId}`);
     try {
+      if (window.zaowuProvider?.revealResult) {
+        if (saveAs) {
+          const result = await window.zaowuProvider.saveResultAs(taskId, adminToken);
+          if (result.saved) setMessage("已另存为");
+        } else {
+          await window.zaowuProvider.revealResult(taskId, adminToken);
+        }
+        return;
+      }
       const response = await fetch(`/api/admin/tasks/${taskId}/result`, { headers: { Authorization: `Bearer ${adminToken}` } });
       if (!response.ok) throw new Error("生成结果暂不可下载");
       const blob = await response.blob();
@@ -507,9 +516,12 @@ function App() {
   }
 }
 
-function TaskTable({ jobs, accounts, onResume, onCancel, onDownload }: { jobs: Job[]; accounts: Account[]; onResume: (id: string) => void; onCancel: (id: string) => void; onDownload: (id: string) => void }) {
+function TaskTable({ jobs, accounts, onResume, onCancel, onDownload }: { jobs: Job[]; accounts: Account[]; onResume: (id: string) => void; onCancel: (id: string) => void; onDownload: (id: string, saveAs?: boolean) => void }) {
   const providerName = (provider: string) => provider === "image" ? "图片" : provider === "q4-video" ? "Q4" : provider === "claw-video" ? "Claw" : "Wan";
-  return <div className="table-scroll"><table><thead><tr><th>任务</th><th>渠道 / 模型 / 账号</th><th>状态</th><th>进度</th><th>创建时间</th><th className="right">操作</th></tr></thead><tbody>{jobs.length ? jobs.map((job) => <tr key={job.id}><td><strong className="table-primary">{job.task_type === "image" ? "图片生成" : "视频生成"}</strong><small className="table-secondary">{shortId(job.id)}</small></td><td><span className="table-primary">{providerName(job.provider)} · {job.model}</span><small className="table-secondary">{accounts.find((a) => a.id === job.account_id)?.name || "待分配"}</small></td><td><span className={`badge ${job.status === "completed" ? "green" : job.status.includes("failed") || job.status === "submission_unknown" ? "amber" : "neutral"}`}>{STATUS[job.status] || job.status}</span>{job.error && <small className="table-secondary task-error" title={job.error}>{job.error}</small>}</td><td><div className="progress-line"><span style={{ width: `${job.progress}%` }} /></div><small className="table-secondary">{job.progress}%</small></td><td className="secondary">{fmtDate(job.created_at)}</td><td className="right actions">{job.result_ready ? <button type="button" onClick={() => onDownload(job.id)}><ArrowDownToLine size={14} /> 下载</button> : ["poll_failed", "download_failed"].includes(job.status) ? <button type="button" onClick={() => onResume(job.id)}><RefreshCw size={14} /> 继续</button> : ["queued", "preparing", "submitted", "processing", "downloading"].includes(job.status) ? <button type="button" onClick={() => { if (window.confirm("确认停止这个本地任务？已提交到上游的任务不会被远程取消。")) onCancel(job.id); }}><X size={14} /> 停止</button> : "—"}</td></tr>) : <tr><td colSpan={6} className="empty">暂无生成任务。</td></tr>}</tbody></table></div>;
+  return <div className="table-scroll"><table><thead><tr><th>任务</th><th>渠道 / 模型 / 账号</th><th>状态</th><th>进度</th><th>创建时间</th><th className="right">操作</th></tr></thead><tbody>{jobs.length ? jobs.map((job) => <tr key={job.id}><td><strong className="table-primary">{job.task_type === "image" ? "图片生成" : "视频生成"}</strong><small className="table-secondary">{shortId(job.id)}</small></td><td><span className="table-primary">{providerName(job.provider)} · {job.model}</span><small className="table-secondary">{accounts.find((a) => a.id === job.account_id)?.name || "待分配"}</small></td><td><span className={`badge ${job.status === "completed" ? "green" : job.status.includes("failed") || job.status === "submission_unknown" ? "amber" : "neutral"}`}>{STATUS[job.status] || job.status}</span>{job.error && <small className="table-secondary task-error" title={job.error}>{job.error}</small>}</td><td><div className="progress-line"><span style={{ width: `${job.progress}%` }} /></div><small className="table-secondary">{job.progress}%</small></td><td className="secondary">{fmtDate(job.created_at)}</td><td className="right actions">{job.result_ready ? <>
+    <button type="button" onClick={() => onDownload(job.id)}>{window.zaowuProvider?.revealResult ? <ExternalLink size={14} /> : <ArrowDownToLine size={14} />} {window.zaowuProvider?.revealResult ? "打开所在文件夹" : "下载"}</button>
+    {window.zaowuProvider?.saveResultAs ? <button type="button" onClick={() => onDownload(job.id, true)}><ArrowDownToLine size={14} /> 另存为</button> : null}
+  </> : ["poll_failed", "download_failed"].includes(job.status) ? <button type="button" onClick={() => onResume(job.id)}><RefreshCw size={14} /> 继续</button> : ["queued", "preparing", "submitted", "processing", "downloading"].includes(job.status) ? <button type="button" onClick={() => { if (window.confirm("确认停止这个本地任务？已提交到上游的任务不会被远程取消。")) onCancel(job.id); }}><X size={14} /> 停止</button> : "—"}</td></tr>) : <tr><td colSpan={6} className="empty">暂无生成任务。</td></tr>}</tbody></table></div>;
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

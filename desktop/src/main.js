@@ -6,6 +6,7 @@ const { ensureLocalSession } = require("./local-account");
 const { registerLocalProvider } = require("./local-provider");
 const { openProvider } = require("./provider-client");
 const { registerFileStorage } = require("./file-storage");
+const { registerMediaFiles } = require("./media-files");
 const storage = require(app.isPackaged
   ? path.join(process.resourcesPath, "storage.cjs")
   : "../../desktop-shared/storage.cjs");
@@ -31,8 +32,14 @@ function migrateLegacyUserData() {
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
+} else if (process.argv.includes("--quit") || process.argv.includes("--quit-for-update")) {
+  app.quit();
 } else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, argv) => {
+    if (argv.includes("--quit") || argv.includes("--quit-for-update")) {
+      app.quit();
+      return;
+    }
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
@@ -52,6 +59,7 @@ async function boot() {
     const fileStorage = await storage.prepareCanvasStorage(app.getPath("documents"), path.join(userData, "data", "resources"));
     registerLocalProvider(userData, () => mainWindow, () => backend?.baseURL);
     registerFileStorage({ getWindow: () => mainWindow, getBackend: () => backend, currentResources: fileStorage.resources });
+    registerMediaFiles({ getWindow: () => mainWindow, getBackend: () => backend, resourceDir: fileStorage.resources });
     await openProvider(true).catch(() => {});
     backend = await startBackend({
       bundleDir: bundleDir(),

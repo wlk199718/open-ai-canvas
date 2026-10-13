@@ -2,6 +2,7 @@ const { app, BrowserWindow, Tray, Menu, dialog, shell, ipcMain } = require("elec
 const path = require("node:path");
 const { startService } = require("./service");
 const { registerAdminSession } = require("./admin-session");
+const { registerResultFiles } = require("./media-files");
 const storage = require(app.isPackaged
   ? path.join(process.resourcesPath, "storage.cjs")
   : "../../../desktop-shared/storage.cjs");
@@ -31,12 +32,12 @@ function showWindow() {
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
-} else if (process.argv.includes("--quit") || process.argv.includes("--quit-for-storage")) {
+} else if (process.argv.includes("--quit") || process.argv.includes("--quit-for-update") || process.argv.includes("--quit-for-storage")) {
   app.quit();
 } else {
   app.on("second-instance", (_event, argv) => {
     if (argv.includes("--quit-for-storage")) void quitForStorage();
-    else if (argv.includes("--quit")) app.quit();
+    else if (argv.includes("--quit") || argv.includes("--quit-for-update")) app.quit();
     else if (!argv.includes("--background")) showWindow();
   });
   app.whenReady().then(async () => {
@@ -73,6 +74,7 @@ if (!app.requestSingleInstanceLock()) {
         ipcMain, userData: app.getPath("userData"), bundleDir,
         getWindow: () => window, baseURL: service.baseURL,
       });
+      registerResultFiles({ getWindow: () => window, baseURL: service.baseURL, getResultDir: () => currentResults });
       const icon = path.join(__dirname, "..", "build", "icon.png");
       window = new BrowserWindow({
         width: 1440, height: 960, minWidth: 1000, minHeight: 700,

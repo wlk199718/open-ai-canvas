@@ -10,6 +10,12 @@ import { type LucideIcon, FileText, Image as ImageIcon, Clapperboard, AudioLines
 
 export type LibraryAsset = Asset;
 
+export function assetMediaFile(asset: LibraryAsset) {
+    if (asset.kind !== "image" && asset.kind !== "video" && asset.kind !== "audio" && asset.kind !== "model") return { fileName: asset.title || "asset" };
+    const extension = asset.kind === "model" ? asset.data.fileName.split(".").pop() || "glb" : asset.data.mimeType.split("/")[1] || "png";
+    return { storageKey: asset.data.storageKey, url: asset.kind === "image" ? asset.data.dataUrl : asset.data.url, fileName: `${asset.title || "asset"}.${extension}` };
+}
+
 export const ASSET_GRID_DENSITY_KEY = "yingce:asset-grid-density";
 
 export const assetKindIcons: Record<LibraryAsset["kind"], LucideIcon> = {

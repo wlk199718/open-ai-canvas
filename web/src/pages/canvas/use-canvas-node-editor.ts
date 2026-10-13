@@ -9,7 +9,7 @@ import { writeCanvasNodePrompt } from "@/lib/canvas/canvas-node-prompt";
 import { applyBatchPrimaryImage, applyNodeConfigPatch } from "@/lib/canvas/canvas-project-domain";
 import { resetGenerationTaskMetadata } from "@/lib/canvas/canvas-project-generation";
 import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
-import { downloadBrowserMedia } from "@/services/browser-download";
+import { openOrDownloadMedia, saveMediaAs } from "@/services/desktop-media";
 import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { CanvasNodeType, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
 
@@ -204,9 +204,18 @@ export function useCanvasNodeEditor({
         if (!supported || (!content && !storageKey)) return;
         try {
             const downloadName = buildCanvasMediaDownloadFileName(canvasTitle, node);
-            await downloadBrowserMedia({ storageKey, url: content, fileName: downloadName });
+            await openOrDownloadMedia({ storageKey, url: content, fileName: downloadName });
         } catch (error) {
             message.error(error instanceof Error ? error.message : "下载失败");
+        }
+    }, [canvasTitle, message]);
+
+    const saveNodeMediaAs = useCallback(async (node: CanvasNodeData) => {
+        try {
+            const result = await saveMediaAs({ storageKey: node.metadata?.storageKey, url: node.metadata?.content, fileName: buildCanvasMediaDownloadFileName(canvasTitle, node) });
+            if (result.saved) message.success("已另存为");
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "另存为失败");
         }
     }, [canvasTitle, message]);
 
@@ -231,6 +240,7 @@ export function useCanvasNodeEditor({
     return {
         collapsingBatchIds,
         downloadNodeImage,
+        saveNodeMediaAs,
         handleConfigNodeChange,
         handleFolderStyleChange,
         handleFolderThemeChange,

@@ -28,6 +28,22 @@ function createNodeContext(node: CanvasNodeData): ToolContext {
 }
 
 describe("canvas node toolbar model", () => {
+    test("local results reveal the file and offer save as; remote results keep download", () => {
+        const node: CanvasNodeData = { id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { storageKey: "resource:video-1" } };
+        const ctx = createNodeContext(node);
+        ctx.handlers.onNodeSaveAs = () => {};
+        let tools = resolveToolbarTools("node-hover", ctx, null);
+        expect(tools.some((tool) => tool.id === "saveMediaAs")).toBe(false);
+        ctx.localMedia = true;
+        ctx.mediaFileLabel = "打开所在文件夹";
+        tools = resolveToolbarTools("node-hover", ctx, null);
+        const reveal = tools.find((tool) => tool.id === "download")!;
+        expect(typeof reveal.displayLabel === "function" ? reveal.displayLabel(ctx) : reveal.displayLabel).toBe("打开所在文件夹");
+        expect(tools.some((tool) => tool.id === "saveMediaAs")).toBe(true);
+        ctx.mediaFileDisabled = true;
+        expect(reveal.disabled?.(ctx)).toBe(true);
+    });
+
     test("preserves empty, simple and busy video states", () => {
         const ctx = createNodeContext({ id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: {} });
         const emptyTools = resolveToolbarTools("node-hover", ctx, null);

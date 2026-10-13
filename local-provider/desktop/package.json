@@ -1,7 +1,7 @@
 {
   "name": "zaowu-provider-desktop",
   "productName": "造物生成服务",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "造物本地图片和视频生成服务",
   "author": "造物",
@@ -19,7 +19,7 @@
     "productName": "造物生成服务",
     "directories": { "output": "release" },
     "files": ["src/**/*", "build/icon.png", "package.json"],
-    "extraResources": [{ "from": "bundle", "to": "bundle" }, { "from": "../../desktop-shared/storage.cjs", "to": "storage.cjs" }],
+    "extraResources": [{ "from": "bundle", "to": "bundle" }, { "from": "../../desktop-shared/storage.cjs", "to": "storage.cjs" }, { "from": "../../desktop-shared/local-media.cjs", "to": "local-media.cjs" }],
     "asar": true,
     "win": {
       "target": "nsis",

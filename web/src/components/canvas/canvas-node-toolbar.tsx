@@ -13,6 +13,7 @@ import type { ImageSplitParams } from "@/lib/canvas/canvas-image-data";
 import { formatBytes, getDataUrlByteSize } from "@/lib/image-utils";
 import { generationErrorMessage } from "@/lib/generation-error";
 import { useCopyText } from "@/hooks/use-copy-text";
+import { useDesktopMedia } from "@/hooks/use-desktop-media";
 import { producedModelLabel } from "@/lib/canvas/produced-model";
 import { nodeGenerationPrompt } from "@/lib/canvas/generation-contract";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -38,6 +39,7 @@ type CanvasNodeToolbarProps = {
     onGenerateImage: (node: CanvasNodeData) => void;
     onUpload: (node: CanvasNodeData) => void;
     onDownload: (node: CanvasNodeData) => void;
+    onSaveAs?: (node: CanvasNodeData) => void;
     onSaveAsset: (node: CanvasNodeData) => void;
     onMaskEdit: (node: CanvasNodeData) => void;
     onRemoveBackground: (node: CanvasNodeData) => void;
@@ -105,6 +107,7 @@ export function CanvasNodeToolbar({
     onGenerateImage,
     onUpload,
     onDownload,
+    onSaveAs,
     onSaveAsset,
     onMaskEdit,
     onRemoveBackground,
@@ -145,6 +148,7 @@ export function CanvasNodeToolbar({
     const themeName = useActiveTheme();
     const theme = canvasThemes[themeName];
     const simpleMode = workspaceMode === "simple";
+    const mediaFile = useDesktopMedia(node?.metadata?.storageKey, node?.metadata?.content);
 
     useEffect(() => {
         setOpenMenuId(null);
@@ -260,7 +264,7 @@ export function CanvasNodeToolbar({
     // 构建 ToolContext——供注册表解析工具
     const nodeHoverHandlers = {
         onNodeInfo: onInfo, onNodeDelete: onDelete, onNodeRetry: onRetry, onNodeEditText: onEditText, onNodeDecreaseFont: onDecreaseFont, onNodeIncreaseFont: onIncreaseFont,
-        onNodeToggleDialog: onToggleDialog, onNodeAnnotate: onAnnotate, onNodeGenerateImage: onGenerateImage, onNodeUpload: onUpload, onNodeDownload: onDownload,
+        onNodeToggleDialog: onToggleDialog, onNodeAnnotate: onAnnotate, onNodeGenerateImage: onGenerateImage, onNodeUpload: onUpload, onNodeDownload: onDownload, onNodeSaveAs: onSaveAs,
         onNodeSaveAsset: onSaveAsset, onNodeMaskEdit: onMaskEdit, onNodeRemoveBackground: onRemoveBackground, onNodeEmotion: onEmotion, onNodePortraitTexture: onPortraitTexture, onNodeCrop: onCrop,
         onNodeSplit: (target) => onSplit(target, { rows: 2, columns: 2 }), onNodeUpscale: onUpscale, onNodeSuperResolve: onSuperResolve, onNodeAngle: onAngle, onNodeViewImage: onViewImage,
         onNodeExtractVideoFrames: onExtractVideoFrames, onNodeExtractAudioFromVideo: onExtractAudioFromVideo, onNodeTrimVideoSegments: onTrimVideoSegments, onNodeReversePrompt: onReversePrompt, onNodeToggleFreeResize: onToggleFreeResize,
@@ -268,6 +272,9 @@ export function CanvasNodeToolbar({
     } as Partial<ToolbarHandlers> as ToolbarHandlers;
 
     const nodeHoverCtx: ToolContext = {
+        localMedia: mediaFile.local,
+        mediaFileLabel: mediaFile.label,
+        mediaFileDisabled: mediaFile.checking || mediaFile.unavailable,
         selectedCount: 0,
         selectedNodeTypes: new Set(),
         selectedVideoCount: 0,
