@@ -1,5 +1,6 @@
 import { getFeatureAvailability, type AuthSessionPayload } from "@/services/api/auth";
 import { restoreLocalGenerationConnection } from "@/services/local-generation";
+import { filterDesktopAgentCatalog } from "@/services/desktop-agent-model";
 import { initializeDesktopTextPresets } from "@/lib/desktop-text-presets";
 import { projectImageParameters, imageParametersForSpec } from "./image-parameters";
 import { getModelCatalog, type CapabilitySpec, type ModelCatalogResponse, type OptionConstraint, type PublicChannelCatalog, type PublicLogicalModel } from "@/services/api/logical-models";
@@ -108,7 +109,7 @@ async function hydrateUserSessionData(payload: AuthSessionPayload, generation: n
 
     void (async () => {
         try {
-            const catalog = await getModelCatalog();
+            const catalog = await filterDesktopAgentCatalog(await getModelCatalog());
             if (!isCurrentSession(generation, userId)) return;
             if (!persistedConfig) {
                 // 只有首次配置缺失时才生成能力推荐；已有配置中的空数组代表用户明确清空。
@@ -171,7 +172,7 @@ function safeScopedStorageGet(key: string) {
 }
 
 export async function refreshSystemChannels() {
-    const catalog = await getModelCatalog();
+    const catalog = await filterDesktopAgentCatalog(await getModelCatalog());
     useConfigStore.getState().mergeSystemChannels(modelCatalogChannels(catalog));
 }
 

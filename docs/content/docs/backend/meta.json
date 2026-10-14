@@ -5,6 +5,7 @@
   "pages": [
     "local-development",
     "local-file-storage",
+    "desktop-agent-models",
     "canvas-agent-appearance",
     "http-api",
     "code-map",

@@ -3,6 +3,7 @@ import { Button } from "antd";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { MoveDiagonal2 } from "lucide-react";
 import { saveAs } from "file-saver";
+import { agentModelFields } from "@/services/desktop-agent-model";
 import { buildAgentDebugExport } from "@/lib/canvas/agent-debug-export";
 import { agentPlanVisible, latestAgentPlanItems, latestAgentPlanTerminal, pendingAgentQuestion } from "@/lib/canvas/cloud-agent-plan";
 import { emptyAgentContextUsage, presentAgentContextUsage, reduceAgentContextUsage, type AgentContextUsage } from "@/lib/canvas/agent-context-usage";
@@ -44,7 +45,7 @@ import {
     type CloudAgentPendingSubmission,
     type CloudAgentMessagePresentation,
 } from "@/services/cloud-agent-conversations";
-import { logicalModelIDForConfig, modelOptionName, resolveModelRequestConfig, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { selectImageInspectionModel } from "@/lib/canvas/image-to-previs-agent";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
@@ -677,16 +678,14 @@ export function CanvasCloudAgentPanel({ canvasId, domainProjectId, nodeCount, se
                 if (selectedSkillIds.length && !capabilities.skills) throw new Error("当前后端尚未接入技能库");
                 await saveRemoteUserDataNow();
                 if (currentScope.current !== scope) return;
-                const agentConfig = { ...config, model: effectiveModel };
-                const requestConfig = resolveModelRequestConfig(agentConfig, effectiveModel);
-                const logicalModelId = logicalModelIDForConfig(agentConfig);
+                const modelFields = await agentModelFields(config, effectiveModel);
+                if (currentScope.current !== scope) return;
                 const input = {
                     canvasId,
                     prompt: value,
                     reasoningMode,
                     profileRevision: profileView.revision,
-                    model: modelOptionName(effectiveModel) || undefined,
-                    ...(logicalModelId ? { logicalModelId } : requestConfig.channelId ? { channelId: requestConfig.channelId, channelModelKey: modelOptionName(effectiveModel) || undefined } : {}),
+                    ...modelFields,
                     skillIds: [...new Set([...selectedSkillIds, ...resolveSkillMentions(value, installedSkills).map((skill) => skill.skillId)])],
                     focusNodeIds: selectedNodeIds.length <= 8 ? selectedNodeIds : [],
                     permissionMode,

@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { ensureAgentModelConfig } from "./desktop-agent-model";
 import { applyCanvasOperations, type CanvasOperation, type CanvasSnapshot } from "@/lib/canvas/canvas-operation-contract";
 import { buildCanvasContext } from "@/lib/canvas/canvas-context-discovery";
 import { applyCreativeAnswers, creativeScenarioPrompt, normalizeCreativeQuestions, CREATIVE_SCENARIOS, type CreativeAnswers, type CreativeQuote } from "@/lib/creation/creative-agent-contract";
@@ -187,16 +188,21 @@ export class CreativeAgentController {
         });
     }
     private assets() { return this.state.references.map((item) => ({ id: item.id, label: item.title })); }
-    private requestConfig(model?: string): AiConfig {
+    private async requestConfig(model?: string, text = true): Promise<AiConfig> {
         const config = this.options.config(), selected = model || this.state.textModel || config.textModel || config.model;
         const next: AiConfig = { ...config, model: selected, count: "1", taskWorkflowProvider: "model" };
-        const requestConfig = resolveModelRequestConfig(next, selected);
-        if (!logicalModelIDForConfig(next) && !requestConfig.channelId) throw new Error("智能创作需要系统受管模型，请选择系统模型；自定义渠道和本机模型仍可使用原直接生成入口");
-        return next;
+        const request = resolveModelRequestConfig(next, selected);
+        if (!text) {
+            if (!logicalModelIDForConfig(next) && !request.channelId) throw new Error("智能创作生成需要系统受管模型，请选择系统模型");
+            return next;
+        }
+        const managed = await ensureAgentModelConfig(next);
+        this.assertLive();
+        return managed;
     }
     private async preparePlanning(prompt: string) {
         if (this.state.modelCalls >= 32) throw new Error("此任务已达到 32 次分析调用上限，请新建任务并沿用当前方案");
-        const config = this.requestConfig();
+        const config = await this.requestConfig();
         const skills = await listAddedSkills();
         const prepared = await skillRuntime.prepare({ profile: "creation", prompt, skills: skills.skills || [], selectedSkillIds: this.state.selectedSkillIds });
         this.assertLive();
@@ -209,7 +215,7 @@ export class CreativeAgentController {
             { role: "user", content: [{ type: "text", text: JSON.stringify({ brief: this.state.brief, proposal: this.state.proposal, availableModels: catalogue, references: this.state.references, canvas: canvas ? buildCanvasContext(canvas.read()) : { available: false, instruction: "首页不能操作画布" }, currentRequest: prepared.prompt }) }, ...imageReferences.map((reference) => ({ type: "image_url" as const, image_url: { url: reference.storageKey! } }))] },
         ];
         const itemKey = `planning:${nanoid()}`;
-        this.state = { ...this.state, planning: { itemKey, protocol, model: config.model, prompt }, pendingPayment: undefined };
+        this.state = { ...this.state, planning: { itemKey, protocol, model: this.state.textModel || this.options.config().textModel || this.options.config().model, prompt }, pendingPayment: undefined };
         await this.save("running");
         await this.ensurePlanningSubmission();
     }
@@ -218,7 +224,7 @@ export class CreativeAgentController {
         if (!planning) throw new Error("缺少待恢复的规划内容");
         let submission = this.submissions.find((item) => item.itemKey === planning.itemKey);
         if (!submission) {
-            const config = this.requestConfig(planning.model);
+            const config = await this.requestConfig(planning.model);
             const request = prepareBackendToolGenerationTask({ prompt: planning.prompt || "继续创作", config: { ...config, systemPrompt: "" }, messages: planning.protocol, tools: CREATIVE_AGENT_TOOLS, toolChoice: "auto", signal: this.abort.signal });
             request.input = { ...request.input, referenceImages: this.state.references.filter((reference) => reference.kind === "image" && reference.storageKey).map((reference) => ({ id: reference.id, name: reference.title, storageKey: reference.storageKey })) };
             submission = await this.api.prepare(this.run!.id, { ...this.guard(), itemKey: planning.itemKey, request }, this.abort.signal);
@@ -437,7 +443,7 @@ export class CreativeAgentController {
                 if (!reference || !resourceId || reference.metadata?.status !== "success") throw new Error("引用素材尚未就绪，请选择实际可用的资源");
                 return { id: reference.id, name: reference.title || "参考图", type: reference.metadata?.mimeType || "image/png", storageKey, dataUrl: resourceFileUrl(resourceId) };
             });
-            const config = { ...this.requestConfig(item.model), count: "1", ...(item.size ? { size: item.size } : {}), ...(item.seconds !== undefined ? { videoSeconds: String(item.seconds) } : {}), ...(item.quality ? item.mode === "video" ? { vquality: item.quality } : { quality: item.quality } : {}) };
+            const config = { ...(await this.requestConfig(item.model, false)), count: "1", ...(item.size ? { size: item.size } : {}), ...(item.seconds !== undefined ? { videoSeconds: String(item.seconds) } : {}), ...(item.quality ? item.mode === "video" ? { vquality: item.quality } : { quality: item.quality } : {}) };
             const request = await prepareBackendGenerationTask({ projectId: this.run!.canvasId, mode: item.mode, prompt: node.metadata?.prompt || "", config, referenceImages, signal: this.abort.signal, metadata: { source: "creative-agent", creationRunId: this.run!.id, nodeId: node.id, conversationId: this.run!.id } });
             request.input = { ...request.input, nodeId: node.id };
             const submission = await this.api.prepare(this.run!.id, { ...this.guard(), itemKey: `media:v${proposal.version}:${media.ref}:${media.attempt}`, proposalVersion: proposal.version, request }, this.abort.signal);

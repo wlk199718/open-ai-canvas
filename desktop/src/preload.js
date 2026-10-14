@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("zaowuDesktop", {
+  manageTextModel: (value) => ipcRenderer.invoke("zaowu:models:manage-text", value),
+  getManagedTextChannelIds: () => ipcRenderer.invoke("zaowu:models:managed-text-ids"),
   getLocalProviderConnection: () => ipcRenderer.invoke("zaowu:provider:get"),
   saveLocalProviderConnection: (value) => ipcRenderer.invoke("zaowu:provider:save", value),
   openLocalProvider: () => ipcRenderer.invoke("zaowu:provider:open"),

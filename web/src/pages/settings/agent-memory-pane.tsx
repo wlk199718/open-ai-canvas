@@ -1,4 +1,5 @@
 import { App, Button, Form, Input, Space } from "antd";
+import { agentModelFields } from "@/services/desktop-agent-model";
 import { Check, Download, Pencil, Plus, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -29,7 +30,7 @@ import {
     type AgentMemoryRequest,
     type AgentMemoryStep,
 } from "@/services/api/agent-memories";
-import { encodeChannelModel, logicalModelIDForConfig, modelOptionName, resolveModelRequestConfig, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { encodeChannelModel, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { Select } from "@/components/ui/base/select";
 
 const COMPACT_INTERVALS: Array<{ value: AgentMemoryCompactInterval; label: string }> = [
@@ -60,17 +61,10 @@ function memoryStatusLabel(status: string) {
     return status;
 }
 
-function compactModelFields(config: AiConfig, selectedModel: string) {
+async function compactModelFields(config: AiConfig, selectedModel: string) {
     const model = selectedModel.trim();
     if (!model) return {};
-    const agentConfig = { ...config, model };
-    const requestConfig = resolveModelRequestConfig(agentConfig, model);
-    return {
-        logicalModelId: logicalModelIDForConfig(agentConfig) || undefined,
-        channelId: requestConfig.channelId || undefined,
-        channelModelKey: modelOptionName(model) || undefined,
-        model,
-    };
+    return { ...(await agentModelFields(config, model)), model };
 }
 
 function restoreCompactModel(settings: AgentMemoryCompactView | null, fallback: string) {
@@ -157,7 +151,7 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
         try {
             const next = await updateAgentMemorySettings({
                 compactInterval: interval,
-                ...compactModelFields(config, selectedModel),
+                ...(await compactModelFields(config, selectedModel)),
             });
             setSettings(next);
             setModel(restoreCompactModel(next, selectedModel));
@@ -176,7 +170,7 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
         }
         setCompacting(true);
         try {
-            const next = await compactAgentMemories(compactModelFields(config, selected));
+            const next = await compactAgentMemories(await compactModelFields(config, selected));
             setSettings(next);
             message.success("已提交压缩任务，完成后会刷新记忆列表");
         } catch (error) {

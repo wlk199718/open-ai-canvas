@@ -5,6 +5,13 @@ description: 从产品功能快速定位主要代码入口
 
 # 代码功能地图
 
+## 桌面智能体文本模型
+
+- 个人配置转后端模型引用：`web/src/services/desktop-agent-model.ts`；画布、创作规划与记忆压缩入口分别接入该服务。
+- 主窗口来源与固定登录态校验：`desktop/src/managed-text-ipc.js`；渠道映射、并发串行和模型同步：`desktop/src/managed-text-models.js`。
+- 后端复用 `app/admin_channels.go`、`channel_models.go` 的权限、地址校验和加密；目录过滤通过主进程查询内部渠道 ID，不依赖公开目录中的渠道名称。
+- 使用说明：[桌面智能体文本模型](./desktop-agent-models)。
+
 ## 桌面端统一文件存储
 
 - 共享配置、目录迁移与活动目录记录：`desktop-shared/storage.cjs`。

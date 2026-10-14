@@ -7,6 +7,7 @@ const { registerLocalProvider } = require("./local-provider");
 const { openProvider } = require("./provider-client");
 const { registerFileStorage } = require("./file-storage");
 const { registerMediaFiles } = require("./media-files");
+const { registerManagedTextModels } = require("./managed-text-ipc");
 const storage = require(app.isPackaged
   ? path.join(process.resourcesPath, "storage.cjs")
   : "../../desktop-shared/storage.cjs");
@@ -60,6 +61,7 @@ async function boot() {
     registerLocalProvider(userData, () => mainWindow, () => backend?.baseURL);
     registerFileStorage({ getWindow: () => mainWindow, getBackend: () => backend, currentResources: fileStorage.resources });
     registerMediaFiles({ getWindow: () => mainWindow, getBackend: () => backend, resourceDir: fileStorage.resources });
+    registerManagedTextModels({ getWindow: () => mainWindow, getBackend: () => backend });
     await openProvider(true).catch(() => {});
     backend = await startBackend({
       bundleDir: bundleDir(),

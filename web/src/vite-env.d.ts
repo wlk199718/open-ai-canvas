@@ -5,6 +5,8 @@ declare const __APP_CHANGELOG__: string;
 
 interface Window {
     zaowuDesktop?: {
+        manageTextModel: (input: import("./services/desktop-agent-model").DesktopTextModelInput) => Promise<{ channelId: string; channelModelKey: string }>;
+        getManagedTextChannelIds: () => Promise<string[]>;
         openLocalProvider: () => Promise<{ opened: boolean }>;
         getLocalProviderConnection: () => Promise<import("./services/local-generation").LocalGenerationConnection | null>;
         saveLocalProviderConnection: (connection: import("./services/local-generation").LocalGenerationConnection) => Promise<boolean>;

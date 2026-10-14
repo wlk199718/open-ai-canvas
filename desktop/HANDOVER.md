@@ -6,7 +6,7 @@
 
 方案：Electron 44 外壳 + Go 后端作为子进程，前端、Agent 运行时、官方插件包、LGPL ffmpeg 一起打进安装包。工作台与 SQLite 在本机运行；模型生成仍调用在线供应商，生成服务卡密仍需在线验证。
 
-当前桌面包版本：造物与造物生成服务均为 `0.1.5`，已验证实际覆盖安装、本地文件定位和另存为，原有数据保留。本次上游合并只更新源码和验证构建，尚未发布新的安装包；数据库隔离副本已完成结构 50 → 54 迁移校验，在用客户端数据库仍为 50。详细范围见待测试清单；本轮未提交计费生成请求。
+当前桌面包版本：造物 `0.1.7`，造物生成服务 `0.1.5`。造物 `0.1.6` 已完成实际覆盖安装与智能体文本调用验证，包含上游 `v1.6.7` 合并及个人文本渠道受管模型衔接；`0.1.7` 为当前工作区重新构建分发版本，安装验收见待测试清单。Claude、Gemini 和国产共 35 个文本型号经实际 Agent API 短消息测试，32 个正常；3 个存在上游停用、503 或鉴权/权限异常。分发包不包含个人数据库、账号或真实密钥。
 
 ## 代码位置
 
@@ -55,7 +55,7 @@ Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 npm run dist
 ```
 
-产物：`desktop/release/zaowu-setup-0.1.5.exe`。重新发布合并后的版本前应提升包版本，避免与已分发的旧包混淆。`FFMPEG_DIRECTORY` 是待替换的 LGPL ffmpeg 目录。开发调试用 `npm start`，先完成后端、前端构建及 `prepare-bundle`。生成服务单独按 [README](../local-provider/README.md) 构建；安装两个客户端后，造物会发现并启动本地生成服务。
+产物：`desktop/release/zaowu-setup-0.1.7.exe`。重新发布合并后的版本前应提升包版本，避免与已分发的旧包混淆。`FFMPEG_DIRECTORY` 是待替换的 LGPL ffmpeg 目录。开发调试用 `npm start`，先完成后端、前端构建及 `prepare-bundle`。生成服务单独按 [README](../local-provider/README.md) 构建；安装两个客户端后，造物会发现并启动本地生成服务。
 
 ## 注意事项
 
